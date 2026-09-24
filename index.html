@@ -1,0 +1,2269 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gainer Predictor v4.3 — Binance Radar + Simulador</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
+
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#05080d;--bg2:#090e16;--bg3:#0e1520;--bg4:#141e2b;--bg5:#1a2535;
+  --border:#1c2a3a;--border2:#243447;--border3:#2d4159;
+  --green:#00e896;--green2:#00b874;--green3:#00ff99;--green-dim:rgba(0,232,150,.08);
+  --amber:#ffb800;--amber2:#cc9200;--amber-dim:rgba(255,184,0,.08);
+  --gold:#ffd700;--gold-dim:rgba(255,215,0,.1);
+  --red:#ff3b5c;--red2:#cc1f3e;--red-dim:rgba(255,59,92,.08);
+  --blue:#4da6ff;--blue2:#2080e0;--blue-dim:rgba(77,166,255,.08);
+  --cyan:#00d4ff;--cyan-dim:rgba(0,212,255,.07);
+  --text:#dde6f0;--text2:#7a9ab8;--text3:#3d5570;--text4:#1e3148;
+  --mono:'IBM Plex Mono',monospace;--sans:'IBM Plex Sans',sans-serif;
+  --r:5px;--r2:8px;
+}
+
+html,body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:13px;min-height:100vh;overflow-x:hidden}
+
+/* grid bg */
+body::after{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,232,150,.015) 1px,transparent 1px),linear-gradient(90deg,rgba(0,232,150,.015) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0}
+
+#root{position:relative;z-index:1;max-width:1100px;margin:0 auto;padding:0 0 40px}
+
+/* ── HEADER ── */
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid var(--border);background:rgba(9,14,22,.95);backdrop-filter:blur(8px);position:sticky;top:0;z-index:100}
+.hdr-left{display:flex;align-items:center;gap:12px}
+.logo-mark{width:28px;height:28px;border:1.5px solid var(--green);border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:10px;font-weight:700;color:var(--green)}
+.logo-txt{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--text);letter-spacing:.1em}
+.logo-txt span{color:var(--green)}
+.version-badge{font-family:var(--mono);font-size:8px;color:var(--amber);background:var(--amber-dim);border:1px solid rgba(255,184,0,.2);border-radius:3px;padding:2px 6px;letter-spacing:.05em}
+
+.hdr-right{display:flex;align-items:center;gap:10px}
+.live-pill{display:flex;align-items:center;gap:5px;padding:4px 9px;background:var(--green-dim);border:1px solid rgba(0,232,150,.2);border-radius:20px}
+.live-dot{width:5px;height:5px;border-radius:50%;background:var(--green);animation:livepulse 1.8s ease-in-out infinite}
+@keyframes livepulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.8)}}
+.live-txt{font-family:var(--mono);font-size:9px;color:var(--green);letter-spacing:.1em}
+
+.cd-wrap{display:flex;align-items:center;gap:6px}
+.cd-ring{position:relative;width:26px;height:26px}
+.cd-ring svg{transform:rotate(-90deg)}
+.cd-ring circle{fill:none;stroke:var(--border2);stroke-width:2}
+.cd-ring circle.prog{stroke:var(--green);stroke-width:2;stroke-linecap:round;transition:stroke-dashoffset .9s linear;stroke-dasharray:62.83;stroke-dashoffset:0}
+.cd-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:8px;font-weight:600;color:var(--green)}
+
+.btn{font-family:var(--mono);font-size:9px;letter-spacing:.06em;padding:5px 10px;border-radius:var(--r);cursor:pointer;transition:all .15s;border:1px solid var(--border2);background:var(--bg3);color:var(--text2)}
+.btn:hover{border-color:var(--green);color:var(--green);background:var(--green-dim)}
+.btn:active{transform:scale(.97)}
+
+/* ── BTC CONTEXT BANNER ── */
+.btc-banner{display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:7px 12px;margin-bottom:12px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r);font-family:var(--mono)}
+.btc-banner-dot{width:7px;height:7px;border-radius:50%;background:var(--text3);flex-shrink:0}
+.btc-banner-dot.bull{background:var(--green);box-shadow:0 0 5px var(--green)}
+.btc-banner-dot.bear{background:var(--red);box-shadow:0 0 5px var(--red)}
+.btc-banner-dot.neutral{background:var(--amber);box-shadow:0 0 5px var(--amber)}
+.btc-banner-lbl{font-size:9px;color:var(--text3);letter-spacing:.08em}
+.btc-banner-price{font-size:11px;font-weight:600;color:var(--text)}
+.btc-banner-chip{font-size:9px;padding:1px 6px;border-radius:3px;background:var(--bg4);color:var(--text2)}
+.btc-banner-status{font-size:8px;letter-spacing:.08em;margin-left:auto;padding:2px 7px;border-radius:3px}
+.btc-banner-status.bull{color:var(--green);background:var(--green-dim)}
+.btc-banner-status.bear{color:var(--red);background:var(--red-dim)}
+.btc-banner-status.neutral{color:var(--amber);background:var(--amber-dim)}
+
+/* ── HERO PREDICTION ── */
+.hero{padding:14px 18px;border-bottom:1px solid var(--border)}
+.section-label{font-family:var(--mono);font-size:8px;color:var(--text3);letter-spacing:.2em;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.section-label::after{content:'';flex:1;height:1px;background:var(--border)}
+
+.hero-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+/* main prediction card */
+.pred-main{background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r2);padding:14px 16px;position:relative;overflow:hidden}
+.pred-main.favorable-timing{border-color:var(--gold);box-shadow:0 0 16px rgba(255,215,0,.35),inset 0 0 24px rgba(255,215,0,.05);animation:goldPulse 2.5s ease-in-out infinite}
+@keyframes goldPulse{0%,100%{box-shadow:0 0 12px rgba(255,215,0,.3),inset 0 0 20px rgba(255,215,0,.04)}50%{box-shadow:0 0 22px rgba(255,215,0,.5),inset 0 0 28px rgba(255,215,0,.08)}}
+.favorable-badge{display:none;align-items:center;gap:6px;font-family:var(--mono);font-size:9px;color:var(--gold);background:var(--gold-dim);border:1px solid rgba(255,215,0,.3);border-radius:5px;padding:4px 8px;margin-bottom:6px;letter-spacing:.03em}
+.favorable-badge.show{display:flex}
+.unfavorable-badge{display:none;align-items:center;gap:6px;font-family:var(--mono);font-size:9px;color:var(--amber);background:var(--amber-dim);border:1px solid rgba(255,184,0,.3);border-radius:5px;padding:4px 8px;margin-bottom:6px;letter-spacing:.03em}
+.unfavorable-badge.show{display:flex}
+.pred-main::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--green),var(--cyan),transparent)}
+.pred-main::after{content:'';position:absolute;top:0;right:0;width:120px;height:120px;background:radial-gradient(circle at top right,rgba(0,232,150,.05),transparent 70%);pointer-events:none}
+
+.pred-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px}
+.pred-symbol-wrap{display:flex;align-items:baseline;gap:8px}
+.pred-sym{font-family:var(--mono);font-size:26px;font-weight:700;color:var(--text);letter-spacing:.02em;line-height:1}
+.pred-pair{font-family:var(--mono);font-size:11px;color:var(--text3)}
+.pred-pos{font-family:var(--mono);font-size:10px;color:var(--text2);background:var(--bg4);border:1px solid var(--border);border-radius:3px;padding:2px 7px;margin-top:4px;display:inline-block}
+
+.signal-badge{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.sig{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:4px;font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:.08em}
+.sig.hot{background:rgba(0,232,150,.12);border:1px solid rgba(0,232,150,.3);color:var(--green)}
+.sig.warm{background:var(--amber-dim);border:1px solid rgba(255,184,0,.3);color:var(--amber)}
+.sig.cold{background:var(--red-dim);border:1px solid rgba(255,59,92,.3);color:var(--red)}
+.sig-dot{width:6px;height:6px;border-radius:50%}
+.hot .sig-dot{background:var(--green);box-shadow:0 0 5px var(--green)}
+.warm .sig-dot{background:var(--amber);box-shadow:0 0 5px var(--amber)}
+.cold .sig-dot{background:var(--red);box-shadow:0 0 5px var(--red)}
+
+.pred-score-row{display:flex;align-items:center;gap:16px;margin-bottom:12px}
+.big-score{font-family:var(--mono);font-size:44px;font-weight:700;line-height:1;color:var(--green)}
+.big-score.warm{color:var(--amber)}
+.big-score.cold{color:var(--red)}
+.score-breakdown{flex:1}
+.score-label{font-family:var(--mono);font-size:8px;color:var(--text3);letter-spacing:.1em;margin-bottom:2px}
+.score-sublabel{font-size:11px;color:var(--text2)}
+
+/* 4 mini metric bars */
+.metric-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.mbar{background:var(--bg4);border:1px solid var(--border);border-radius:var(--r);padding:7px 9px}
+.mbar-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px}
+.mbar-lbl{font-family:var(--mono);font-size:8px;color:var(--text3);letter-spacing:.08em;text-transform:uppercase}
+.mbar-val{font-family:var(--mono);font-size:11px;font-weight:600}
+.mbar-track{height:3px;background:var(--border);border-radius:2px;overflow:hidden}
+.mbar-fill{height:100%;border-radius:2px;transition:width .7s ease}
+.c-green{color:var(--green)}.fill-green{background:var(--green)}
+.c-amber{color:var(--amber)}.fill-amber{background:var(--amber)}
+.c-blue{color:var(--blue)}.fill-blue{background:var(--blue)}
+.c-cyan{color:var(--cyan)}.fill-cyan{background:var(--cyan)}
+.c-red{color:var(--red)}.fill-red{background:var(--red)}
+
+/* top 5 technical detail panel */
+.tech-panel{background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r2);padding:14px 16px;overflow:hidden}
+.tech-title{font-family:var(--mono);font-size:9px;color:var(--text3);letter-spacing:.12em;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between}
+.analyzing-tag{font-size:8px;color:var(--cyan);background:var(--cyan-dim);border:1px solid rgba(0,212,255,.2);border-radius:3px;padding:1px 6px}
+
+.coin-tech-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);cursor:default}
+#tech-rows{max-height:340px;overflow-y:auto}
+.coin-tech-row:last-child{border-bottom:none}
+.ctr-rank{font-family:var(--mono);font-size:9px;color:var(--text3);min-width:14px}
+.ctr-sym{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--text);min-width:60px}
+.ctr-metrics{display:flex;gap:5px;flex:1;justify-content:flex-end;flex-wrap:wrap}
+
+.tag{display:inline-flex;align-items:center;gap:3px;font-family:var(--mono);font-size:9px;padding:2px 6px;border-radius:3px;border:1px solid;white-space:nowrap}
+.tag.rsi-ok{background:rgba(0,232,150,.08);border-color:rgba(0,232,150,.25);color:var(--green)}
+.tag.rsi-warn{background:var(--amber-dim);border-color:rgba(255,184,0,.25);color:var(--amber)}
+.tag.rsi-over{background:var(--red-dim);border-color:rgba(255,59,92,.25);color:var(--red)}
+.tag.macd-bull{background:rgba(0,232,150,.08);border-color:rgba(0,232,150,.25);color:var(--green)}
+.tag.macd-bear{background:var(--red-dim);border-color:rgba(255,59,92,.25);color:var(--red)}
+.tag.macd-cross{background:rgba(0,212,255,.07);border-color:rgba(0,212,255,.25);color:var(--cyan)}
+.tag.vol-high{background:var(--amber-dim);border-color:rgba(255,184,0,.25);color:var(--amber)}
+.tag.vol-norm{background:var(--bg4);border-color:var(--border);color:var(--text3)}
+.tag.bb-sq{background:rgba(77,166,255,.07);border-color:rgba(77,166,255,.2);color:var(--blue)}
+.tag.ema-bull{background:rgba(0,232,150,.08);border-color:rgba(0,232,150,.2);color:var(--green)}
+.tag.ema-bear{background:var(--red-dim);border-color:rgba(255,59,92,.2);color:var(--red)}
+
+.loading-tag{font-family:var(--mono);font-size:9px;color:var(--text3);animation:blink .8s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:.4}50%{opacity:1}}
+
+/* ── MAIN TABLE ── */
+.table-zone{padding:10px 18px 0}
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:700px}
+thead th{font-family:var(--mono);font-size:8px;color:var(--text3);letter-spacing:.12em;text-transform:uppercase;padding:6px 9px;text-align:right;border-bottom:1px solid var(--border);white-space:nowrap;cursor:pointer;user-select:none;transition:color .15s}
+thead th:first-child{text-align:left}
+thead th:hover{color:var(--text2)}
+thead th.sort-active{color:var(--green)}
+tbody tr{border-bottom:1px solid rgba(28,42,58,.6);transition:background .1s}
+tbody tr:hover{background:rgba(255,255,255,.018)}
+tbody tr.is-pred{background:rgba(0,232,150,.04) !important}
+tbody tr.is-pred td .sym-name{color:var(--green)}
+td{padding:5px 9px;text-align:right;vertical-align:middle;font-size:12px}
+td:first-child{text-align:left}
+
+.rank-n{font-family:var(--mono);font-size:9px;color:var(--text3);display:inline-block;min-width:16px}
+.sym-name{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--text)}
+.sym-pair{font-family:var(--mono);font-size:9px;color:var(--text4)}
+.pred-tag{display:inline-block;font-family:var(--mono);font-size:7px;color:var(--green);background:rgba(0,232,150,.1);border:1px solid rgba(0,232,150,.25);border-radius:2px;padding:1px 4px;margin-left:4px;letter-spacing:.05em;vertical-align:middle}
+
+.pct-up{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--green)}
+.pct-down{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--red)}
+.price-txt{font-family:var(--mono);font-size:10px;color:var(--text2)}
+
+.rsi-chip{display:inline-block;font-family:var(--mono);font-size:10px;font-weight:500;padding:1px 5px;border-radius:3px;min-width:30px;text-align:center}
+.rsi-chip.ok{background:rgba(0,232,150,.08);color:var(--green)}
+.rsi-chip.warn{background:var(--amber-dim);color:var(--amber)}
+.rsi-chip.over{background:var(--red-dim);color:var(--red)}
+.rsi-chip.loading{background:var(--bg4);color:var(--text3)}
+
+.macd-chip{font-family:var(--mono);font-size:9px;padding:1px 5px;border-radius:3px;white-space:nowrap}
+.macd-chip.bull{background:rgba(0,232,150,.08);color:var(--green)}
+.macd-chip.bear{background:var(--red-dim);color:var(--red)}
+.macd-chip.cross{background:rgba(0,212,255,.07);color:var(--cyan)}
+.macd-chip.loading{background:var(--bg4);color:var(--text3)}
+
+.vol7-chip{font-family:var(--mono);font-size:10px}
+.vol7-chip.high{color:var(--amber)}
+.vol7-chip.norm{color:var(--text2)}
+.vol7-chip.loading{color:var(--text3)}
+
+.score-cell-wrap{display:flex;align-items:center;justify-content:flex-end;gap:5px}
+.score-n{font-family:var(--mono);font-size:11px;font-weight:600;min-width:24px;text-align:right}
+.score-mini{width:32px;height:3px;background:var(--border);border-radius:2px;overflow:hidden}
+.score-mini-fill{height:100%;border-radius:2px;transition:width .6s}
+
+.ema-chip{font-family:var(--mono);font-size:9px;padding:1px 5px;border-radius:3px}
+.ema-chip.bull{background:rgba(0,232,150,.08);color:var(--green)}
+.ema-chip.bear{background:var(--red-dim);color:var(--red)}
+.ema-chip.loading{background:var(--bg4);color:var(--text3)}
+
+/* ── FOOTER ── */
+.footer{padding:12px 18px 0;border-top:1px solid var(--border);margin-top:14px}
+.footer-txt{font-family:var(--mono);font-size:8px;color:var(--text3);letter-spacing:.05em;line-height:1.7}
+
+/* ── NAV TABS ── */
+.nav-tabs{display:flex;gap:2px;padding:8px 18px 0;border-bottom:1px solid var(--border);background:var(--bg2)}
+.nav-tab{font-family:var(--mono);font-size:9px;letter-spacing:.1em;padding:6px 14px;border-radius:4px 4px 0 0;cursor:pointer;color:var(--text3);border:1px solid transparent;border-bottom:none;transition:all .15s;user-select:none}
+.nav-tab:hover{color:var(--text2);background:var(--bg3)}
+.nav-tab.active{color:var(--green);background:var(--bg3);border-color:var(--border2);border-bottom:1px solid var(--bg3);margin-bottom:-1px}
+.tab-panel{display:none}.tab-panel.active{display:block}
+
+/* ── SIM BUTTON in table ── */
+.sim-btn{font-family:var(--mono);font-size:8px;letter-spacing:.04em;padding:3px 7px;border-radius:3px;cursor:pointer;border:1px solid rgba(0,232,150,.25);background:rgba(0,232,150,.06);color:var(--green);transition:all .15s;white-space:nowrap}
+.sim-btn:hover{background:rgba(0,232,150,.15);border-color:var(--green)}
+.sim-btn:active{transform:scale(.95)}
+.sim-btn.simulated{border-color:rgba(255,184,0,.3);background:rgba(255,184,0,.06);color:var(--amber)}
+
+/* ── SIMULATOR PANEL ── */
+.sim-zone{padding:16px 18px}
+.sim-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px}
+.sim-stat{background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r2);padding:10px 12px;text-align:center}
+.sim-stat-val{font-family:var(--mono);font-size:20px;font-weight:700;color:var(--text);line-height:1.1}
+.sim-stat-lbl{font-family:var(--mono);font-size:8px;color:var(--text3);letter-spacing:.1em;margin-top:4px}
+
+/* history table */
+.hist-tbl-wrap{overflow-x:auto}
+.hist-tbl{width:100%;border-collapse:collapse;min-width:750px}
+.hist-tbl thead th{font-family:var(--mono);font-size:8px;color:var(--text3);letter-spacing:.12em;text-transform:uppercase;padding:6px 9px;text-align:right;border-bottom:1px solid var(--border);white-space:nowrap}
+.hist-tbl thead th:first-child{text-align:left}
+.hist-tbl tbody tr{border-bottom:1px solid rgba(28,42,58,.6);transition:background .1s}
+.hist-tbl tbody tr:hover{background:rgba(255,255,255,.018)}
+.hist-tbl td{padding:6px 9px;text-align:right;font-size:11px;vertical-align:middle;font-family:var(--mono)}
+.hist-tbl td:first-child{text-align:left}
+
+.res-win{color:var(--green)}.res-loss{color:var(--red)}.res-open{color:var(--amber)}
+.res-badge{display:inline-block;padding:2px 6px;border-radius:3px;font-size:9px;font-weight:600}
+.res-badge.win{background:rgba(0,232,150,.1);border:1px solid rgba(0,232,150,.25);color:var(--green)}
+.res-badge.loss{background:var(--red-dim);border:1px solid rgba(255,59,92,.25);color:var(--red)}
+.res-badge.open{background:var(--amber-dim);border:1px solid rgba(255,184,0,.25);color:var(--amber)}
+
+.checking-tag{font-family:var(--mono);font-size:8px;color:var(--cyan);animation:blink .8s ease-in-out infinite}
+.empty-hist{text-align:center;padding:40px;font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:.08em;line-height:2}
+
+.sim-actions{display:flex;gap:8px;margin-bottom:12px;align-items:center;flex-wrap:wrap}
+.sim-clear-btn{font-family:var(--mono);font-size:8px;letter-spacing:.06em;padding:5px 10px;border-radius:var(--r);cursor:pointer;border:1px solid rgba(255,59,92,.25);background:var(--red-dim);color:var(--red);transition:all .15s}
+.sim-clear-btn:hover{border-color:var(--red);background:rgba(255,59,92,.15)}
+.sim-info{font-family:var(--mono);font-size:8px;color:var(--text3);letter-spacing:.05em}
+.sim-refresh-btn{font-family:var(--mono);font-size:8px;letter-spacing:.06em;padding:5px 10px;border-radius:var(--r);cursor:pointer;border:1px solid rgba(0,212,255,.25);background:var(--cyan-dim);color:var(--cyan);transition:all .15s}
+.sim-refresh-btn:hover{border-color:var(--cyan);background:rgba(0,212,255,.1)}
+
+/* toast */
+.toast{position:fixed;bottom:24px;right:24px;background:var(--bg4);border:1px solid var(--border2);border-radius:var(--r2);padding:10px 16px;font-family:var(--mono);font-size:10px;color:var(--text);z-index:999;opacity:0;transform:translateY(10px);transition:all .3s;pointer-events:none;max-width:280px}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast.green{border-color:rgba(0,232,150,.4);color:var(--green)}
+.toast.red{border-color:rgba(255,59,92,.4);color:var(--red)}
+.toast.gold{border-color:rgba(255,215,0,.5);color:var(--gold);background:var(--gold-dim)}
+.toast.cyan{border-color:rgba(0,212,255,.5);color:var(--cyan);background:var(--cyan-dim)}
+
+/* ── LOADING OVERLAY ── */
+#global-loading{position:fixed;inset:0;background:rgba(5,8,13,.9);z-index:200;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px}
+.gload-logo{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--green);letter-spacing:.15em}
+.gload-bar{width:200px;height:2px;background:var(--border);border-radius:1px;overflow:hidden}
+.gload-fill{height:100%;background:var(--green);border-radius:1px;animation:gload 1.5s ease-in-out infinite}
+@keyframes gload{0%{width:0;margin-left:0}60%{width:70%}100%{width:0;margin-left:100%}}
+.gload-sub{font-family:var(--mono);font-size:9px;color:var(--text3);letter-spacing:.1em}
+
+/* flash on refresh */
+@keyframes rowflash{from{background:rgba(0,232,150,.07)}to{background:transparent}}
+.flash-row{animation:rowflash .5s ease-out}
+
+.error-banner{padding:20px;text-align:center;font-family:var(--mono);font-size:10px;color:var(--red);letter-spacing:.06em;line-height:2}
+</style>
+</head>
+<body>
+
+<div id="global-loading">
+  <div class="gload-logo">GAINER PREDICTOR v2</div>
+  <div class="gload-bar"><div class="gload-fill"></div></div>
+  <div class="gload-sub" id="gload-msg">CONECTANDO CON BINANCE...</div>
+</div>
+
+<div id="root">
+
+<!-- HEADER -->
+<header class="hdr">
+  <div class="hdr-left">
+    <div class="logo-mark">GP</div>
+    <div>
+      <div class="logo-txt">GAINER <span>PREDICTOR</span></div>
+    </div>
+    <div class="version-badge">v4.3 · SIMULADOR</div>
+  </div>
+  <div class="hdr-right">
+    <div class="live-pill">
+      <div class="live-dot" id="live-dot"></div>
+      <span class="live-txt" id="live-txt">CONECTANDO</span>
+    </div>
+    <div class="cd-wrap">
+      <div class="cd-ring">
+        <svg viewBox="0 0 22 22" width="26" height="26">
+          <circle cx="11" cy="11" r="9"/>
+          <circle cx="11" cy="11" r="9" class="prog" id="cd-prog"/>
+        </svg>
+        <div class="cd-num" id="cd-num">30</div>
+      </div>
+    </div>
+    <button class="btn" onclick="triggerRefresh()">↻ REFRESH</button>
+    <button class="btn" id="mode-btn" onclick="toggleScanMode()" style="border-color:rgba(255,180,0,.3);color:var(--amber)">📈 NORMAL</button>
+    <button class="btn" id="alert-btn" onclick="toggleAlerts()" style="border-color:rgba(0,212,255,.3);color:var(--cyan)">🔕 ALERTAS</button>
+    <button class="btn" onclick="showTab('sim')" style="border-color:rgba(0,232,150,.3);color:var(--green)">📊 SIMULADOR</button>
+    <span style="font-family:var(--mono);font-size:8px;color:var(--text3)" id="ts-txt">—</span>
+  </div>
+</header>
+
+<!-- NAV TABS -->
+<div class="nav-tabs">
+  <div class="nav-tab active" id="tab-scanner" onclick="showTab('scanner')">📡 SCANNER</div>
+  <div class="nav-tab" id="tab-sim" onclick="showTab('sim')">📊 SIMULADOR</div>
+</div>
+
+<!-- SCANNER PANEL -->
+<div class="tab-panel active" id="panel-scanner">
+
+<!-- HERO -->
+<div class="hero">
+
+  <div class="btc-banner" id="btc-banner">
+    <span class="btc-banner-dot" id="btc-dot"></span>
+    <span class="btc-banner-lbl">BTC:</span>
+    <span class="btc-banner-price" id="btc-price">$—</span>
+    <span class="btc-banner-chip" id="btc-1h">1h —</span>
+    <span class="btc-banner-chip" id="btc-24h">24h —</span>
+    <span class="btc-banner-status" id="btc-status">CARGANDO CONTEXTO BTC...</span>
+  </div>
+
+  <div class="section-label">▶ PREDICCIÓN — PRÓXIMO CANDIDATO #1</div>
+
+  <div class="hero-grid">
+    <!-- MAIN PRED CARD -->
+    <div class="pred-main" id="pred-main">
+      <div class="favorable-badge" id="favorable-badge">
+        ⭐ Horario históricamente favorable (jue/vie 8am-12pm) — tu mejor combinación de winrate/promedio del historial. No es garantía.
+      </div>
+      <div class="unfavorable-badge" id="unfavorable-badge">
+        ⚠ Día/hora con desempeño históricamente flojo (dom/lun y algunas horas puntuales) — no bloquea nada, solo precaución extra al entrar.
+      </div>
+      <div class="pred-header">
+        <div>
+          <div class="pred-symbol-wrap">
+            <span class="pred-sym" id="p-sym">———</span>
+            <span class="pred-pair">/USDT</span>
+          </div>
+          <div class="pred-pos" id="p-pos">Posición actual: —</div>
+        </div>
+        <div class="signal-badge">
+          <div id="p-sig" class="sig warm"><div class="sig-dot"></div>ANALIZANDO</div>
+          <div style="font-family:var(--mono);font-size:8px;color:var(--text3);text-align:right;margin-top:3px" id="p-price">$—</div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:8px;margin:6px 0 2px" id="p-extra-badges">
+        <span class="tag" id="p-confidence" style="font-size:9px">Confianza: —</span>
+        <span class="tag" id="p-risk" style="font-size:9px">Riesgo entrada tarde: —</span>
+      </div>
+
+      <div class="pred-score-row">
+        <div class="big-score" id="p-bscore">—</div>
+        <div class="score-breakdown">
+          <div class="score-label">PRED SCORE / 100</div>
+          <div class="score-sublabel" id="p-reason">Calculando señales técnicas...</div>
+        </div>
+      </div>
+
+      <div class="metric-grid">
+        <div class="mbar">
+          <div class="mbar-top"><span class="mbar-lbl">RSI REAL (14)</span><span class="mbar-val c-green" id="m-rsi">—</span></div>
+          <div class="mbar-track"><div class="mbar-fill fill-green" id="mb-rsi" style="width:0%"></div></div>
+        </div>
+        <div class="mbar">
+          <div class="mbar-top"><span class="mbar-lbl">MACD</span><span class="mbar-val c-cyan" id="m-macd">—</span></div>
+          <div class="mbar-track"><div class="mbar-fill fill-cyan" id="mb-macd" style="width:0%"></div></div>
+        </div>
+        <div class="mbar">
+          <div class="mbar-top"><span class="mbar-lbl">VOL RECIENTE</span><span class="mbar-val c-amber" id="m-vol7">—</span></div>
+          <div class="mbar-track"><div class="mbar-fill fill-amber" id="mb-vol7" style="width:0%"></div></div>
+        </div>
+        <div class="mbar">
+          <div class="mbar-top"><span class="mbar-lbl">EMA 8/21</span><span class="mbar-val c-blue" id="m-ema">—</span></div>
+          <div class="mbar-track"><div class="mbar-fill fill-blue" id="mb-ema" style="width:0%"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TOP 20 TECH PANEL -->
+    <div class="tech-panel">
+      <div class="tech-title">
+        <span>TOP 20 — SEÑALES TÉCNICAS REALES</span>
+        <span class="analyzing-tag" id="analyzing-tag">CARGANDO KLINES...</span>
+      </div>
+      <div id="tech-rows">
+        <div style="font-family:var(--mono);font-size:9px;color:var(--text3);padding:20px 0;text-align:center;letter-spacing:.08em">Cargando datos técnicos...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CANDIDATOS CALIFICADOS: solo score >= 65 (respaldado por datos reales), máximo 5 -->
+  <div class="tech-panel" style="margin-top:12px">
+    <div class="tech-title">
+      <span>✓ CANDIDATOS CALIFICADOS (score ≥ 65, máx. 5)</span>
+    </div>
+    <div id="qualified-rows">
+      <div style="font-family:var(--mono);font-size:9px;color:var(--text3);padding:14px 0;text-align:center;letter-spacing:.08em">Esperando análisis técnico...</div>
+    </div>
+  </div>
+
+  <!-- PATRÓN DE REBOTE TÉCNICO: score en rango + caída limpia + 2 velas verdes de confirmación (velas 3m) -->
+  <div class="tech-panel" style="margin-top:12px">
+    <div class="tech-title">
+      <span id="rebote-title">🎯 PATRÓN DE REBOTE TÉCNICO (velas 3m)</span>
+    </div>
+    <div id="rebote-rows">
+      <div style="font-family:var(--mono);font-size:9px;color:var(--text3);padding:14px 0;text-align:center;letter-spacing:.08em">Esperando análisis técnico...</div>
+    </div>
+  </div>
+</div>
+
+<!-- TABLE -->
+<div class="table-zone">
+  <div class="section-label" style="margin-bottom:8px">▶ TOP 20 GAINERS · USDT · SPOT</div>
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th style="text-align:left" onclick="sortBy('rank')"># PAR</th>
+          <th onclick="sortBy('price')">PRECIO</th>
+          <th onclick="sortBy('pct')">GANANCIA ▼</th>
+          <th onclick="sortBy('vol7')">VOL RÁPIDO</th>
+          <th onclick="sortBy('rsi')">RSI (14)</th>
+          <th onclick="sortBy('macd')">MACD</th>
+          <th onclick="sortBy('ema')">EMA 8/21</th>
+          <th onclick="sortBy('accel')">ACCEL</th>
+          <th onclick="sortBy('score')">SCORE</th>
+          <th>SIMULAR</th>
+        </tr>
+      </thead>
+      <tbody id="tbl-body">
+        <tr><td colspan="10" style="text-align:center;padding:30px;font-family:var(--mono);font-size:10px;color:var(--text3)">Cargando top 20 gainers de Binance...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<div class="footer">
+  <div class="footer-txt">
+    ⚠ ALTO RIESGO · Pred Score = Score Fuerza (cambio 24h + volumen + trades) 55% + Score Continuación/Momentum (según modo) 45% · penalización por contexto BTC y por símbolo con historial negativo<br>
+    RSI, MACD, EMA, ATR y volumen reciente calculados con klines reales de Binance. Las 20 monedas del top reciben análisis técnico completo. Confidence Score y Riesgo de Entrada Tardía son independientes del score principal.<br>
+    Esto NO es asesoría financiera. Alto riesgo. Opera solo lo que estés dispuesto a perder.
+  </div>
+</div>
+
+</div><!-- /panel-scanner -->
+
+<!-- SIMULATOR PANEL -->
+<div class="tab-panel" id="panel-sim">
+  <div class="sim-zone">
+    <div class="section-label" style="margin-bottom:12px">▶ HISTORIAL DE SIMULACIONES</div>
+
+    <!-- Stats summary -->
+    <div class="sim-stats" id="sim-stats">
+      <div class="sim-stat">
+        <div class="sim-stat-val" id="ss-total">0</div>
+        <div class="sim-stat-lbl">TOTAL OPS</div>
+      </div>
+      <div class="sim-stat">
+        <div class="sim-stat-val" id="ss-wins" style="color:var(--green)">0</div>
+        <div class="sim-stat-lbl">GANADORAS</div>
+      </div>
+      <div class="sim-stat">
+        <div class="sim-stat-val" id="ss-losses" style="color:var(--red)">0</div>
+        <div class="sim-stat-lbl">PERDEDORAS</div>
+      </div>
+      <div class="sim-stat">
+        <div class="sim-stat-val" id="ss-rate">—</div>
+        <div class="sim-stat-lbl">WIN RATE</div>
+      </div>
+      <div class="sim-stat" style="border-color:rgba(255,215,0,.25)">
+        <div class="sim-stat-val" id="ss-dorada-rate" style="color:var(--gold)">—</div>
+        <div class="sim-stat-lbl">🟡 SEÑAL DORADA (<span id="ss-dorada-n">0</span>)</div>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="sim-actions">
+      <button class="sim-refresh-btn" onclick="checkAllOpen()">↻ ACTUALIZAR PRECIOS</button>
+      <button class="sim-refresh-btn" onclick="exportCSV()">⬇ EXPORTAR CSV</button>
+      <button class="sim-clear-btn" onclick="clearHistory()">🗑 LIMPIAR TODO</button>
+      <span class="sim-info" id="sim-status">—</span>
+    </div>
+
+    <!-- History table -->
+    <div class="hist-tbl-wrap">
+      <table class="hist-tbl">
+        <thead>
+          <tr>
+            <th style="text-align:left">PAR / HORA</th>
+            <th>SCORE</th>
+            <th>P. ENTRADA</th>
+            <th>30 MIN<br><span style="font-weight:400;color:var(--text4)">precio · ↑max · ↓min</span></th>
+            <th>1 HORA<br><span style="font-weight:400;color:var(--text4)">precio · ↑max · ↓min</span></th>
+            <th>2 HORAS<br><span style="font-weight:400;color:var(--text4)">precio · ↑max · ↓min</span></th>
+            <th>MAX / MIN<br><span style="font-weight:400;color:var(--text4)">global</span></th>
+            <th>TIEMPO<br><span style="font-weight:400;color:var(--text4)">a +1% / +1.5%</span></th>
+            <th>RESULTADO</th>
+            <th>ACCIÓN</th>
+          </tr>
+        </thead>
+        <tbody id="hist-body">
+          <tr><td colspan="10" class="empty-hist">Sin simulaciones todavía.<br>Ve al Scanner, encuentra una moneda con buen score<br>y presiona <span style="color:var(--green)">▶ SIMULAR</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div><!-- /panel-sim -->
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+</div><!-- /root -->
+
+<script>
+// ── CONFIG ──
+const BINANCE = 'https://api.binance.com';
+const PROXY   = 'https://api.allorigins.win/get?url=';
+let allCoins  = [];
+let techData  = {};
+let sortCol   = 'score';
+let sortDir   = -1;
+let cdTimer   = null;
+let cdVal     = 30;
+let isRunning = false;
+let btcContext = { trend:'neutral', pct1h:0, pct24h:0, penalty:0, price:0 };
+let scanMode = 'normal'; // 'normal' (busca las que apenas arrancan) | 'momentum' (busca breakouts ya confirmados, tipo MMT)
+
+// ── RSI CALCULATOR ──
+function calcRSI(closes, period=14) {
+  if (closes.length < period + 1) return null;
+  let gains=0, losses=0;
+  for (let i=1; i<=period; i++) {
+    const d = closes[i] - closes[i-1];
+    if (d>0) gains+=d; else losses+=Math.abs(d);
+  }
+  let avgGain = gains/period;
+  let avgLoss = losses/period;
+  for (let i=period+1; i<closes.length; i++) {
+    const d = closes[i] - closes[i-1];
+    avgGain = (avgGain*(period-1) + Math.max(d,0)) / period;
+    avgLoss = (avgLoss*(period-1) + Math.max(-d,0)) / period;
+  }
+  if (avgLoss===0) return 100;
+  const rs = avgGain/avgLoss;
+  return parseFloat((100 - 100/(1+rs)).toFixed(1));
+}
+
+// ── EMA CALCULATOR ──
+function calcEMA(closes, period) {
+  if (closes.length < period) return null;
+  const k = 2/(period+1);
+  let ema = closes.slice(0,period).reduce((a,b)=>a+b,0)/period;
+  for (let i=period; i<closes.length; i++) ema = closes[i]*k + ema*(1-k);
+  return ema;
+}
+
+// ── MACD CALCULATOR ──
+function calcMACD(closes, _skipPrev) {
+  if (closes.length < 35) return null;
+  const ema12 = calcEMA(closes, 12);
+  const ema26 = calcEMA(closes, 26);
+  if (!ema12||!ema26) return null;
+  const macdLine = ema12 - ema26;
+  // Signal: EMA9 of MACD — simplified with last 9 diffs
+  const diffs = [];
+  for (let i=closes.length-9; i<closes.length; i++) {
+    const e12 = calcEMA(closes.slice(0,i+1), 12);
+    const e26 = calcEMA(closes.slice(0,i+1), 26);
+    if (e12&&e26) diffs.push(e12-e26);
+  }
+  const signal = diffs.length>0 ? diffs.reduce((a,b)=>a+b,0)/diffs.length : 0;
+  const hist   = macdLine - signal;
+  // Hist de la vela anterior, para detectar aceleración real (hist creciendo vs decreciendo).
+  // _skipPrev evita recursión infinita al calcular el MACD anterior.
+  let prevHist = null;
+  if (!_skipPrev && closes.length >= 36) {
+    const prevResult = calcMACD(closes.slice(0, -1), true);
+    if (prevResult) prevHist = prevResult.hist;
+  }
+  return { macd: macdLine, signal, hist, prevHist };
+}
+
+// ── ATR CALCULATOR (Average True Range, suavizado tipo Wilder) ──
+function calcATR(highs, lows, closes, period=14) {
+  if (closes.length < period+1) return null;
+  const trs = [];
+  for (let i=1; i<closes.length; i++) {
+    const h=highs[i], l=lows[i], pc=closes[i-1];
+    const tr = Math.max(h-l, Math.abs(h-pc), Math.abs(l-pc));
+    trs.push(tr);
+  }
+  let atr = trs.slice(0,period).reduce((a,b)=>a+b,0)/period;
+  for (let i=period; i<trs.length; i++) atr = (atr*(period-1)+trs[i])/period;
+  return atr;
+}
+
+// ── SCORE v2 ──
+// Pesos reajustados (jul-2026) tras analizar 74 operaciones cerradas del historial:
+// el score compuesto original correlacionaba ~0.08 con el resultado real, mientras que
+// el momentum de entrada (aceleración/tendencia) mostraba mucha más relación.
+// Se bajó peso a RSI y Vol7d, se subió a EMA y Aceleración. Los subscores se devuelven
+// por separado (breakdown) para poder auditar/correlacionar cada componente en el próximo análisis.
+// Score de Fuerza: "¿es una de las monedas más fuertes del mercado ahora mismo?"
+// Usa datos que ya vienen del ticker 24hr, disponibles de inmediato (sin esperar klines).
+function calcScoreFuerza(coin) {
+  const breakdown = { cambioPrecio:0, volumen:0, trades:0 };
+
+  // Cambio de precio 24h (40pts)
+  const pct = coin.priceChangePct||0;
+  if (pct>10) breakdown.cambioPrecio=40;
+  else if (pct>5) breakdown.cambioPrecio=30;
+  else if (pct>2) breakdown.cambioPrecio=18;
+  else breakdown.cambioPrecio=8;
+
+  // Volumen 24h en USDT (35pts) — proxy de liquidez/dinero real entrando
+  const qv = coin.quoteVolume||0;
+  if (qv>50_000_000) breakdown.volumen=35;
+  else if (qv>20_000_000) breakdown.volumen=26;
+  else if (qv>5_000_000) breakdown.volumen=16;
+  else breakdown.volumen=8;
+
+  // Número de operaciones 24h (25pts) — confirma que el volumen es de muchos traders, no 1-2 ballenas
+  const tc = coin.tradeCount||0;
+  if (tc>50000) breakdown.trades=25;
+  else if (tc>20000) breakdown.trades=18;
+  else if (tc>5000) breakdown.trades=10;
+  else breakdown.trades=4;
+
+  const total = breakdown.cambioPrecio+breakdown.volumen+breakdown.trades;
+  return { total: Math.min(100, Math.round(total)), breakdown };
+}
+
+// Score de Continuación: "¿todavía tiene combustible para +1%/+1.5% adicional, o ya está agotada?"
+// Pesos REAJUSTADOS el 7/8/2026 con base en 200 operaciones reales, usando solo variables
+// disponibles al momento de entrar (nada de snapshots posteriores): Volumen reciente 30 (ahora con
+// más castigo si volDecreasing o volAnalysisEstado=débil), Momentum 25, EMA 26 (subido de 20 —
+// fue la variable con más correlación real, 0.17), RSI 4 (bajado de 10 — correlación casi nula,
+// 0.08, con estos datos), ATR 10, Aceleración 5.
+function calcScoreContinuacion(coin, tech) {
+  const breakdown = { volumen:0, momentum:0, ema:0, rsi:0, atr:0, accel:0 };
+
+  // Volumen reciente (30pts): ratio velas 15m recientes vs promedio 4h — detecta dinero ENTRANDO ahora,
+  // no el volumen acumulado del día (que ya pasó). Penaliza si además se está desinflando (3 velas seguidas bajando)
+  // o si volAnalysisEstado='debil' (histórico real: media -1.43% vs +0.26 a +1.34 en las demás categorías,
+  // la peor combinación de todas las que se midieron con datos disponibles al entrar).
+  if (tech&&tech.volFastRatio!=null) {
+    const v=tech.volFastRatio;
+    if (v>=3) breakdown.volumen=30;
+    else if (v>=2) breakdown.volumen=24;
+    else if (v>=1.5) breakdown.volumen=18;
+    else if (v>=1) breakdown.volumen=10;
+    else breakdown.volumen=3;
+    if (tech.volDecreasing) breakdown.volumen=Math.max(0,breakdown.volumen-14); // antes -8, subido tras confirmar con más datos
+    if (tech.volAnalysis&&tech.volAnalysis.estado==='debil') breakdown.volumen=Math.max(0,breakdown.volumen-10); // nuevo
+  } else {
+    breakdown.volumen=8; // fallback neutral
+  }
+
+  // Momentum MACD + histograma (25pts) — positivo Y acelerando de verdad, no solo positivo
+  if (tech&&tech.macd) {
+    const {macd,hist,prevHist}=tech.macd;
+    const acelerando = (prevHist!==null&&prevHist!==undefined) ? (hist>prevHist) : false;
+    if (macd>0&&hist>0&&acelerando) breakdown.momentum=25;
+    else if (macd>0&&hist>0) breakdown.momentum=18;
+    else if (macd<0&&hist>0) breakdown.momentum=14; // cruce alcista reciente
+    else if (macd>0&&hist<0) breakdown.momentum=6;  // debilitándose
+    else breakdown.momentum=2;
+  }
+
+  // Distancia EMA8/EMA21 (26pts, subido de 20 — fue la variable con más correlación real, 0.17,
+  // entre las disponibles al entrar) — separación chica = impulso reciente; separación grande = movimiento ya maduro
+  if (tech&&tech.ema8!=null&&tech.ema21!=null) {
+    const gap=(tech.ema8-tech.ema21)/tech.ema21*100;
+    if (gap>0.5&&gap<=2) breakdown.ema=26;
+    else if (gap>2&&gap<=4) breakdown.ema=18;
+    else if (gap>4&&gap<=6) breakdown.ema=10;
+    else if (gap>6) breakdown.ema=3;
+    else breakdown.ema=3; // EMA bearish o gap≈0
+  }
+
+  // RSI (4pts, bajado de 10 — con 200 operaciones reales correlaciona casi nada con el resultado, 0.08;
+  // se deja un peso chico solo para seguir descartando sobrecompra extrema, no como señal fuerte)
+  if (tech&&tech.rsi!=null) {
+    const r=tech.rsi;
+    if (r>=55&&r<=63) breakdown.rsi=4;
+    else if (r>63&&r<=68) breakdown.rsi=3;
+    else if (r>68&&r<=72) breakdown.rsi=1; // penalización fuerte
+    else if (r>72) breakdown.rsi=0;        // penalización máxima
+    else breakdown.rsi=2;
+  }
+
+  // ATR como % del precio (10pts) — sin volatilidad suficiente no hay forma de llegar a +1%/+1.5%
+  if (tech&&tech.atr!=null&&coin.lastPrice) {
+    const atrPct=(tech.atr/coin.lastPrice)*100;
+    if (atrPct<0.3) breakdown.atr=2;        // muy comprimido, sin margen
+    else if (atrPct<0.5) breakdown.atr=6;
+    else if (atrPct<=2.5) breakdown.atr=10; // rango ideal para el objetivo
+    else if (atrPct<=4) breakdown.atr=8;
+    else breakdown.atr=6;                   // muy volátil, más riesgo
+  }
+
+  // Aceleración/momentum de velas recientes (5pts)
+  const ac=coin.acceleration||0;
+  if (ac>1.2) breakdown.accel=5;
+  else if (ac>0.6) breakdown.accel=4;
+  else if (ac>0.1) breakdown.accel=3;
+  else if (ac>-0.3) breakdown.accel=2;
+  else breakdown.accel=1;
+
+  const rawTotal = breakdown.volumen+breakdown.momentum+breakdown.ema+breakdown.rsi+breakdown.atr+breakdown.accel;
+
+  // Filtros obligatorios / detección de agotamiento (reporte, puntos 6 y 8):
+  // si se acumulan varias señales de que el impulso ya se agotó, penalización proporcional al número de señales.
+  const razones=[];
+  if ((coin.priceChangePct||0)>18) razones.push('subida diaria >18%');
+  if (tech&&tech.rsi!=null&&tech.rsi>72) razones.push('RSI>72 (sobrecomprado)');
+  if (tech&&tech.ema8!=null&&tech.ema21!=null) {
+    const gap=(tech.ema8-tech.ema21)/tech.ema21*100;
+    if (gap>6) razones.push('EMA8/EMA21 muy separadas');
+  }
+  if (tech&&tech.macd&&tech.macd.hist<=0) razones.push('MACD histograma no positivo');
+  if (tech&&tech.volFastRatio!=null&&tech.volFastRatio<1) razones.push('volumen reciente débil');
+  if (tech&&tech.volAnalysis&&tech.volAnalysis.divergencia) razones.push('divergencia precio/volumen');
+
+  const factor = razones.length>0 ? Math.max(0.3, 1-0.15*razones.length) : 1;
+  const total = Math.min(100, Math.round(rawTotal*factor));
+
+  return { total, breakdown, rawTotal: Math.round(rawTotal), penalizado: razones.length>0, razones };
+}
+
+// ── MODO MOMENTUM/BREAKOUT ──
+// Estrategia alterna: en vez de buscar monedas que "apenas arrancan" (como calcScoreContinuacion),
+// busca monedas que YA están en tendencia fuerte y siguen empujando — el perfil que se le escapaba
+// al modo normal (ej. RSI extremo + subida diaria grande, tipo MMT +47.86% con RSI 81.8).
+// Es más riesgoso a propósito: el mismo perfil que aquí se premia es el que BANK y DEXE tenían
+// cuando se revirtieron feo en el historial real. La diferencia clave que exige esta función para
+// no atrapar solo "ya agotadas" es que el VOLUMEN siga sostenido/creciendo — sin eso, no puntúa alto.
+function calcScoreMomentum(coin, tech) {
+  const breakdown = { volumen:0, momentum:0, ema:0, rsi:0, atr:0, subida:0 };
+
+  // Volumen reciente (30pts) — igual que en modo normal: sin volumen sosteniendo, un RSI alto
+  // es solo agotamiento sin combustible, no breakout real.
+  if (tech&&tech.volFastRatio!=null) {
+    const v=tech.volFastRatio;
+    if (v>=3) breakdown.volumen=30;
+    else if (v>=2) breakdown.volumen=24;
+    else if (v>=1.5) breakdown.volumen=16;
+    else if (v>=1) breakdown.volumen=8;
+    else breakdown.volumen=0; // sin volumen sosteniendo, el breakout no cuenta
+    if (tech.volDecreasing) breakdown.volumen=Math.max(0,breakdown.volumen-15); // aquí sí pesa más el desinfle
+    if (tech.volAnalysis&&tech.volAnalysis.divergencia) breakdown.volumen=Math.max(0,breakdown.volumen-10); // precio sube sin volumen real detrás
+  }
+
+  // Momentum MACD (20pts) — solo importa que siga positivo, no penaliza que ya lleve rato así
+  if (tech&&tech.macd) {
+    const {macd,hist}=tech.macd;
+    if (macd>0&&hist>0) breakdown.momentum=20;
+    else if (macd>0) breakdown.momentum=10;
+    else breakdown.momentum=0;
+  }
+
+  // EMA8/EMA21 (15pts) — invertido: separación GRANDE se premia (tendencia madura y fuerte),
+  // no se penaliza como en modo normal.
+  if (tech&&tech.ema8!=null&&tech.ema21!=null) {
+    const gap=(tech.ema8-tech.ema21)/tech.ema21*100;
+    if (gap>6) breakdown.ema=15;
+    else if (gap>3) breakdown.ema=11;
+    else if (gap>1) breakdown.ema=6;
+    else breakdown.ema=2;
+  }
+
+  // RSI (20pts) — invertido: RSI alto se premia (fuerza compradora sostenida), no se penaliza.
+  if (tech&&tech.rsi!=null) {
+    const r=tech.rsi;
+    if (r>=75) breakdown.rsi=20;
+    else if (r>=65) breakdown.rsi=15;
+    else if (r>=55) breakdown.rsi=8;
+    else breakdown.rsi=2; // RSI bajo = no hay presión compradora fuerte, no es breakout
+  }
+
+  // Subida diaria (15pts) — invertido: subida grande ya hecha se premia como confirmación de fuerza,
+  // no se penaliza como señal de agotamiento.
+  const chg=coin.priceChangePct||0;
+  if (chg>30) breakdown.subida=15;
+  else if (chg>18) breakdown.subida=11;
+  else if (chg>8) breakdown.subida=6;
+  else breakdown.subida=2;
+
+  const total = Math.min(100, Math.round(breakdown.volumen+breakdown.momentum+breakdown.ema+breakdown.rsi+breakdown.subida));
+  return { total, breakdown };
+}
+
+// ── LATE ENTRY RISK ──
+// Indicador independiente del score: qué tan probable es que ya se te esté escapando el movimiento.
+// No penaliza el score (eso ya lo hace el detector de agotamiento dentro de Continuación) — es una
+// etiqueta informativa Bajo/Medio/Alto para que decidas tú, útil también en modo Momentum donde esas
+// señales SÍ se premian en el score pero el riesgo de entrar tarde sigue siendo real.
+function calcLateEntryRisk(coin, tech) {
+  const signals=[];
+  if ((coin.priceChangePct||0)>18) signals.push('subida diaria >18%');
+  if (tech&&tech.rsi!=null&&tech.rsi>72) signals.push('RSI>72');
+  if (tech&&tech.ema8!=null&&tech.ema21!=null) {
+    const price=coin.lastPrice||tech.ema8;
+    const distEma8=price&&tech.ema8?((price-tech.ema8)/tech.ema8*100):0;
+    if (distEma8>4) signals.push('precio muy separado de EMA8');
+  }
+  if (tech&&tech.volDecreasing) signals.push('volumen descendente');
+  if (tech&&tech.atr!=null&&coin.lastPrice) {
+    const atrPct=(tech.atr/coin.lastPrice)*100;
+    if (atrPct>4) signals.push('volatilidad excesiva');
+  }
+  if (tech&&tech.volAnalysis&&tech.volAnalysis.divergencia) signals.push('divergencia precio/volumen');
+
+  let level='Bajo';
+  if (signals.length>=4) level='Alto';
+  else if (signals.length>=2) level='Medio';
+  return { level, count: signals.length, signals };
+}
+
+// ── CONFIDENCE SCORE ──
+// Separado del score principal a propósito: dos monedas pueden empatar en score total con perfiles
+// muy distintos de confiabilidad. Se arma con 4 componentes reciclando lo que ya calculan Fuerza/
+// Continuación/Momentum (no se recalcula nada desde cero):
+// - Calidad técnica: momentum + EMA + RSI del breakdown activo, normalizado a 100.
+// - Calidad de volumen: componente de volumen del breakdown activo, normalizado a 100.
+// - Calidad de mercado: contexto BTC (favorable/lateral/desfavorable).
+// - Riesgo: inverso del Late Entry Risk.
+function calcConfidenceScore(fuerza, continuacion, btc, risk, isMomentum) {
+  const b = continuacion.breakdown;
+  let tecnica, volumen;
+  if (isMomentum) {
+    tecnica = Math.min(100, Math.round(((b.momentum/20)+(b.ema/15)+(b.rsi/20))/3*100));
+    volumen = Math.min(100, Math.round((b.volumen/30)*100));
+  } else {
+    tecnica = Math.min(100, Math.round(((b.momentum/25)+(b.ema/20)+(b.rsi/10))/3*100));
+    volumen = Math.min(100, Math.round((b.volumen/30)*100));
+  }
+  const mercado = !btc ? 60 : btc.trend==='bull' ? 100 : btc.trend==='neutral' ? 60 : 20;
+  const riesgoScore = risk ? Math.max(0, 100 - risk.count*25) : 60;
+
+  const total = Math.round((tecnica + volumen + mercado + riesgoScore) / 4);
+  return { total, componentes: { tecnica, volumen, mercado, riesgo: riesgoScore } };
+}
+
+function calcScoreV2(coin, tech, btc) {
+  // Combina ambos scores. Pesos actualizados el 2/8/2026 con base en 99 operaciones reales:
+  // Fuerza (55%) mostró correlación clara con el resultado (bucket 95-100 = único con avg positivo);
+  // Continuación (45%, antes 60%) no mostró relación consistente con el resultado en los datos,
+  // así que se le bajó peso hasta que se identifique qué componente suyo sí aporta señal.
+  const fuerza = calcScoreFuerza(coin);
+  let continuacion, base;
+  if (scanMode === 'momentum') {
+    // Modo Momentum/Breakout: prioriza el componente que busca tendencia YA confirmada
+    // (RSI alto + subida grande + volumen sostenido) sobre Fuerza pura.
+    continuacion = calcScoreMomentum(coin, tech);
+    base = fuerza.total*0.35 + continuacion.total*0.65;
+  } else {
+    continuacion = calcScoreContinuacion(coin, tech);
+    base = fuerza.total*0.55 + continuacion.total*0.45;
+  }
+  // Penalización por contexto BTC: si BTC está bajando, las altcoins suelen arrastrarse
+  // con él aunque su score individual se vea bien. Solo penaliza, nunca da puntos extra.
+  const btcPenalty = (btc && btc.penalty) ? btc.penalty : 0;
+  // Penalización por símbolo: monedas con 2+ operaciones históricas y promedio real < -1.5%
+  // (encontrado en el historial real del usuario al 2/8/2026). Se resta en vez de bloquear
+  // por si el patrón cambia — permite que sigan apareciendo pero con desventaja.
+  const symPenalty = SYMBOL_PENALTY[coin.symbol] || 0;
+  const total = Math.min(100, Math.max(0, Math.round(base - btcPenalty - symPenalty)));
+
+  const risk = calcLateEntryRisk(coin, tech);
+  const confidence = calcConfidenceScore(fuerza, continuacion, btc, risk, scanMode==='momentum');
+
+  return { total, fuerza, continuacion, risk, confidence };
+}
+
+// Lista de monedas con desempeño real consistentemente negativo (2+ operaciones, avg < -1.5%)
+// en el historial de simulaciones al 2/8/2026. Revisar y actualizar conforme se junten más datos.
+const SYMBOL_PENALTY = {
+  'ESP': 15, 'RIF': 12, 'HEI': 12, 'DIA': 10,
+  'PROM': 10, 'COTI': 8, 'VANRY': 8, 'BOME': 6
+};
+
+// ── CONTEXTO BTC ──
+// Determina si el mercado en general (BTC) está a favor o en contra de operar altcoins ahora mismo.
+// Usa el % de las últimas 4 velas de 15m (≈1h) para la tendencia de corto plazo, y el ticker 24h como contexto amplio.
+async function fetchBTCContext() {
+  try {
+    const ticker = await apiFetch(`${BINANCE}/api/v3/ticker/24hr?symbol=BTCUSDT`, 7000);
+    const klines = await apiFetch(`${BINANCE}/api/v3/klines?symbol=BTCUSDT&interval=15m&limit=5`, 7000);
+    const closes = klines.map(k => parseFloat(k[4]));
+    const pct1h = closes.length >= 5 ? ((closes[closes.length-1]-closes[0])/closes[0]*100) : 0;
+    const pct24h = parseFloat(ticker.priceChangePercent) || 0;
+    const price = parseFloat(ticker.lastPrice) || 0;
+
+    let trend='neutral', penalty=0;
+    if (pct1h <= -0.5) { trend='bear'; penalty=12; }
+    else if (pct1h >= 0.5) { trend='bull'; penalty=0; }
+    else { trend='neutral'; penalty=4; }
+
+    btcContext = { trend, pct1h, pct24h, penalty, price };
+    renderBTCBanner();
+    return btcContext;
+  } catch(e) {
+    document.getElementById('btc-status').textContent = 'BTC: SIN DATOS';
+    return btcContext;
+  }
+}
+
+function renderBTCBanner() {
+  const dot = document.getElementById('btc-dot');
+  const status = document.getElementById('btc-status');
+  dot.className = 'btc-banner-dot ' + (btcContext.trend==='bull'?'bull':btcContext.trend==='bear'?'bear':'neutral');
+  document.getElementById('btc-price').textContent = '$'+fmtPrice(btcContext.price);
+  document.getElementById('btc-1h').textContent = '1h '+fmtPct(btcContext.pct1h);
+  document.getElementById('btc-24h').textContent = '24h '+fmtPct(btcContext.pct24h);
+  status.className = 'btc-banner-status ' + (btcContext.trend==='bull'?'bull':btcContext.trend==='bear'?'bear':'neutral');
+  if (btcContext.trend==='bull') status.textContent = '🟢 FAVORABLE · sin penalización';
+  else if (btcContext.trend==='bear') status.textContent = `🔴 DESFAVORABLE · -${btcContext.penalty}pts a scores`;
+  else status.textContent = `🟡 LATERAL · -${btcContext.penalty}pts a scores`;
+}
+
+
+function estimateRSI(pct) {
+  return Math.min(95, Math.max(20, Math.round(50 + pct*1.1)));
+}
+
+function calcAccel(coin) {
+  const range=coin.highPrice-coin.lowPrice;
+  if (!range) return 0;
+  const pos=(coin.lastPrice-coin.lowPrice)/range;
+  return parseFloat(((pos-0.5)*4).toFixed(2));
+}
+
+// ── FETCH WITH PROXY FALLBACK ──
+async function apiFetch(url, timeout=8000) {
+  try {
+    const r=await fetch(url,{signal:AbortSignal.timeout(timeout)});
+    if (!r.ok) throw new Error('HTTP '+r.status);
+    return await r.json();
+  } catch(e) {
+    try {
+      const r2=await fetch(PROXY+encodeURIComponent(url),{signal:AbortSignal.timeout(12000)});
+      const j=await r2.json();
+      return JSON.parse(j.contents);
+    } catch(e2) { throw e2; }
+  }
+}
+
+// ── FETCH KLINES + TECHNICAL ──
+async function fetchTech(symbol) {
+  try {
+    // 50 klines de 15m → suficiente para RSI14 + MACD + EMA21 + ATR14
+    const data=await apiFetch(`${BINANCE}/api/v3/klines?symbol=${symbol}USDT&interval=15m&limit=50`,7000);
+    const closes=data.map(k=>parseFloat(k[4]));
+    const highs=data.map(k=>parseFloat(k[2]));
+    const lows=data.map(k=>parseFloat(k[3]));
+    const volumes=data.map(k=>parseFloat(k[5]));
+
+    const rsi=calcRSI(closes,14);
+    const macdResult=calcMACD(closes);
+    const ema8=calcEMA(closes,8);
+    const ema21=calcEMA(closes,21);
+    const atr=calcATR(highs,lows,closes,14);
+
+    // Volumen reciente: últimas 4 velas de 15m (1h) vs promedio de las últimas 16 velas (4h).
+    // Antes se comparaba contra el promedio de TODO el historial de 50 velas (~12.5h) — muy lento
+    // para detectar si está entrando dinero nuevo AHORA. Este ratio reacciona más rápido.
+    const last4=volumes.slice(-4);
+    const last16=volumes.slice(-16);
+    const recentVol=last4.reduce((a,b)=>a+b,0)/4;
+    const avg4h=last16.reduce((a,b)=>a+b,0)/last16.length;
+    const volFastRatio=avg4h>0?parseFloat((recentVol/avg4h).toFixed(2)):1;
+
+    // Volumen decreciente: últimas 3 velas cayendo de forma consecutiva → señal de que el impulso se apaga
+    const last3=volumes.slice(-3);
+    const volDecreasing = last3.length===3 && last3[0]>last3[1] && last3[1]>last3[2];
+
+    // ── ANÁLISIS AVANZADO DE VOLUMEN ──
+    // Compara la dirección del PRECIO contra la dirección del VOLUMEN en las últimas 4 velas (~1h):
+    // - Confirmación: precio y volumen suben juntos → el movimiento tiene dinero real detrás.
+    // - Divergencia: precio sube pero volumen cae → el impulso puede ser artificial/agotándose,
+    //   aunque el precio todavía no lo refleje. Es una señal de alerta temprana.
+    const priceDelta = closes.length>=5 ? closes[closes.length-1]-closes[closes.length-5] : 0;
+    const volDelta = last16.length>=8
+      ? (last4.reduce((a,b)=>a+b,0)/4) - (volumes.slice(-8,-4).reduce((a,b)=>a+b,0)/4)
+      : 0;
+    let volAnalysis;
+    if (priceDelta>0 && volDelta>0) volAnalysis={estado:'confirmado',divergencia:false,label:'✓ Confirmado (precio y volumen suben juntos)'};
+    else if (priceDelta>0 && volDelta<=0) volAnalysis={estado:'divergencia',divergencia:true,label:'⚠ Divergencia (precio sube, volumen cae)'};
+    else if (priceDelta<=0 && volDelta>0) volAnalysis={estado:'entrando',divergencia:false,label:'↻ Volumen entrando en caída de precio'};
+    else volAnalysis={estado:'debil',divergencia:false,label:'— Débil / lateral'};
+    const volTrend = volFastRatio>=1.3?'creciendo':volFastRatio<=0.7?'decreciendo':'estable';
+
+    return { rsi, macd:macdResult, ema8, ema21, atr, volFastRatio, volDecreasing, volAnalysis, volTrend };
+  } catch(e) {
+    return { rsi:null, macd:null, ema8:null, ema21:null, atr:null, volFastRatio:null, volDecreasing:false, volAnalysis:null, volTrend:null };
+  }
+}
+
+// ── MAIN FETCH ──
+async function fetchData() {
+  if (isRunning) return;
+  isRunning=true;
+  setLive(false,'ACTUALIZANDO...');
+
+  try {
+    setGloadMsg('EVALUANDO CONTEXTO BTC...');
+    fetchBTCContext(); // no bloqueante — el banner y la penalización se actualizan cuando llegue
+
+    setGloadMsg('JALANDO TOP GAINERS...');
+    const tickers=await apiFetch(`${BINANCE}/api/v3/ticker/24hr`);
+
+    const stables=['USDC','BUSD','TUSD','USDT','USDP','DAI','FDUSD','PYUSD','USDE','USDB','USDS','AEUR','BEUR','EURI','EURC','BGBP','BIDR','BVND','IDRT','BRL','BKRW','NGN','RUB','UAH','ZAR','TRY','PLN'];
+    const lev=/UP|DOWN|BULL|BEAR|[0-9]L|[0-9]S/;
+    const usdt=tickers.filter(t=>{
+      if(!t.symbol.endsWith('USDT')) return false;
+      const b=t.symbol.replace('USDT','');
+      if(stables.includes(b)||lev.test(b)) return false;
+      // Volumen mínimo: $1,000,000 USDT en 24h — filtra tokens ilíquidos/suspendidos
+      if(parseFloat(t.quoteVolume)<1000000) return false;
+      // Precio mínimo válido: descarta tokens con precio 0 o datos corruptos
+      if(parseFloat(t.lastPrice)<=0) return false;
+      // Filtro de conteo de trades: mínimo 500 trades en 24h — descarta pares muertos
+      if(parseInt(t.count)<500) return false;
+      return parseFloat(t.priceChangePercent)>0;
+    });
+
+    const top20=usdt
+      .sort((a,b)=>parseFloat(b.priceChangePercent)-parseFloat(a.priceChangePercent))
+      .slice(0,20)
+      .map((t,i)=>{
+        const coin={
+          rank:i+1, symbol:t.symbol.replace('USDT',''),
+          lastPrice:parseFloat(t.lastPrice),
+          highPrice:parseFloat(t.highPrice),
+          lowPrice:parseFloat(t.lowPrice),
+          priceChangePct:parseFloat(t.priceChangePercent),
+          quoteVolume:parseFloat(t.quoteVolume),
+          tradeCount:parseInt(t.count)||0,
+          openPrice:parseFloat(t.openPrice),
+          tech:null, score:0,
+        };
+        coin.acceleration=calcAccel(coin);
+        return coin;
+      });
+
+    allCoins=top20;
+
+    // Render inicial con scores estimados
+    top20.forEach(c=>{ const r=calcScoreV2(c,null,btcContext); c.score=r.total; c.scoreFuerza=r.fuerza; c.scoreContinuacion=r.continuacion; c.lateEntryRisk=r.risk; c.confidence=r.confidence; });
+    renderTable(top20);
+    renderPrediction(top20,false);
+    renderQualified(top20);
+    document.getElementById('ts-txt').textContent=new Date().toLocaleTimeString('es-MX');
+
+    hideGlobalLoading();
+    setLive(true,'EN VIVO');
+
+    // FETCH TECH DATA para las 20 — antes solo se analizaban las 5 primeras por cambio 24h,
+    // lo que dejaba fuera monedas como MMT que arrancan más abajo en el ranking de 24h pero
+    // ya traen momentum real. El presupuesto de la API lo permite de sobra (20 llamadas de
+    // peso mínimo por refresh, muy por debajo del límite de Binance).
+    setAnalyzingTag('ANALIZANDO KLINES 15M...');
+    setGloadMsg('');
+    renderTechRows(top20,true);
+
+    let reboteChecksThisCycle = 0;
+    for(let i=0;i<top20.length;i++){
+      const coin=top20[i];
+      setGloadMsg(`ANALIZANDO ${i+1}/${top20.length}...`);
+      const tech=await fetchTech(coin.symbol);
+      techData[coin.symbol]=tech;
+      coin.tech=tech;
+      { const r=calcScoreV2(coin,tech,btcContext); coin.score=r.total; coin.scoreFuerza=r.fuerza; coin.scoreContinuacion=r.continuacion; coin.lateEntryRisk=r.risk; coin.confidence=r.confidence; }
+
+      // Patrón de rebote técnico: solo vale la pena pedir velas de 3m extra para las
+      // monedas que ya caen en el rango de score que Jovani usa para este patrón.
+      // Tope de REBOTE_MAX_CHECKS_PER_CYCLE agregado el 23/9/2026: al ampliar el rango de
+      // score (52-70 cubre casi cualquier moneda del top 20), esto podía sumar hasta ~20
+      // llamadas EXTRA por refresh de 30s encima de las 20 ya existentes — el diseño original
+      // estaba calibrado justo para ~20 llamadas de peso mínimo por ciclo, así que duplicarlas
+      // se acerca al límite de Binance/del proxy y puede causar "No se pudo conectar con
+      // Binance" en algunos refreshes. Se prioriza a las monedas en el orden que ya trae
+      // top20 (por % de cambio 24h), igual que el resto del scanner.
+      coin.rebote = null;
+      coin.arcoFormandose = null;
+      if (coin.score >= REBOTE_SCORE_MIN && coin.score <= REBOTE_SCORE_MAX && reboteChecksThisCycle < REBOTE_MAX_CHECKS_PER_CYCLE) {
+        reboteChecksThisCycle++;
+        const candles3m = await fetch3mKlines(coin.symbol);
+        coin.rebote = detectRebotePattern(candles3m);
+        // Aviso temprano solo si todavía no hay patrón confirmado (evita traslape de avisos).
+        if (!coin.rebote) coin.arcoFormandose = detectArcoFormandose(candles3m);
+      }
+
+      renderTechRows(top20,false);
+      renderPrediction(top20,true);
+      renderQualified(top20);
+      renderRebotePatterns(top20);
+      renderTable(top20);
+    }
+
+    setAnalyzingTag('TÉCNICO COMPLETO ✓');
+    renderTable(top20);
+    renderPrediction(top20,true);
+    renderQualified(top20);
+    renderRebotePatterns(top20);
+
+  } catch(err) {
+    hideGlobalLoading();
+    setLive(false,'ERROR');
+    // Se muestra el mensaje real del error (ej. "HTTP 429"/"HTTP 418" = rate-limit de Binance,
+    // vs. un error de red) para poder diagnosticar la próxima vez sin adivinar.
+    const errMsg = err?.message || String(err) || 'desconocido';
+    const isRateLimit = /429|418/.test(errMsg);
+    const hint = isRateLimit
+      ? 'Binance está limitando las peticiones temporalmente (rate-limit) — espera unos minutos antes de reintentar.'
+      : 'Verifica tu conexión o presiona ↻ REFRESH.';
+    document.getElementById('tbl-body').innerHTML=`<tr><td colspan="9" class="error-banner">⚠ No se pudo conectar con Binance.<br><span style="font-size:9px;color:var(--text3)">${hint}</span><br><span style="font-size:8px;color:var(--text4)">${errMsg}</span></td></tr>`;
+    console.error(err);
+  }
+  isRunning=false;
+}
+
+// ── RENDER PREDICTION ──
+// ── VENTANA HORARIA HISTÓRICAMENTE FAVORABLE ──
+// Basado en el análisis real de 173 operaciones (30 jun - 2 ago 2026): jueves y viernes,
+// entre 8am y 12pm, dieron el mejor winrate (55-62%) y promedio (+0.6% a +2.97%) de todo
+// el historial. NO es una garantía ni cerca del 100% — sigue siendo un patrón estadístico
+// de muestra moderada (n=21-27 por día). Se usa solo como resaltado visual informativo.
+// Actualizar estos valores si un análisis futuro con más datos muestra un patrón distinto.
+const FAVORABLE_DAYS = [4, 5]; // getDay(): 4=jueves, 5=viernes
+const FAVORABLE_HOUR_START = 8;
+const FAVORABLE_HOUR_END = 12; // exclusivo
+
+function isFavorableTiming() {
+  const now = new Date();
+  const day = now.getDay();
+  const hour = now.getHours();
+  return FAVORABLE_DAYS.includes(day) && hour >= FAVORABLE_HOUR_START && hour < FAVORABLE_HOUR_END;
+}
+
+// ── VENTANA HORARIA HISTÓRICAMENTE FLOJA (advertencia, no bloqueo) ──
+// Basado en el análisis de 600 operaciones cerradas (2/8 - 18/9/2026): domingo (31.8% aciertos,
+// -1.55% promedio, n=69) y lunes (35.8% aciertos, -1.53% promedio, n=134) salen consistentemente
+// peor que el resto de la semana, con muestra grande. Algunas horas puntuales (0h, 8h, 17h, 21h)
+// también salen flojas con muestra razonable (n=28-38), aunque con más margen de ruido que los días.
+// Es solo una advertencia visual — NO bloquea simular ni ninguna acción. Revisar/actualizar cuando
+// haya más historial.
+const UNFAVORABLE_DAYS = [0, 1]; // 0=domingo, 1=lunes
+const UNFAVORABLE_HOURS = [0, 8, 17, 21];
+
+function isUnfavorableTiming() {
+  const now = new Date();
+  const day = now.getDay();
+  const hour = now.getHours();
+  return UNFAVORABLE_DAYS.includes(day) || UNFAVORABLE_HOURS.includes(hour);
+}
+
+function applyFavorableTimingUI() {
+  const favorable = isFavorableTiming();
+  const predMain = document.getElementById('pred-main');
+  const badge = document.getElementById('favorable-badge');
+  if (predMain) predMain.classList.toggle('favorable-timing', favorable);
+  if (badge) badge.classList.toggle('show', favorable);
+
+  const unfavorable = isUnfavorableTiming();
+  const warnBadge = document.getElementById('unfavorable-badge');
+  if (warnBadge) warnBadge.classList.toggle('show', unfavorable && !favorable);
+
+  return favorable;
+}
+
+// Revisa cada minuto por si el reloj entra o sale de la ventana favorable mientras la app
+// sigue abierta, sin necesidad de esperar al siguiente refresh completo.
+setInterval(applyFavorableTimingUI, 60000);
+
+function renderPrediction(coins, hasTech) {
+  const sorted=[...coins].sort((a,b)=>b.score-a.score);
+  const c=sorted[0];
+  if(!c) return;
+  applyFavorableTimingUI();
+
+  document.getElementById('p-sym').textContent=c.symbol;
+  document.getElementById('p-pos').textContent=`Posición actual: #${c.rank} en gainers`;
+  document.getElementById('p-price').textContent='$'+fmtPrice(c.lastPrice);
+
+  const sc=c.score;
+  const bsc=document.getElementById('p-bscore');
+  bsc.textContent=sc;
+  bsc.className='big-score '+(sc>=72?'':'sc>=52'?'warm':'cold');
+  if(sc>=72) bsc.style.color='var(--green)';
+  else if(sc>=52) bsc.style.color='var(--amber)';
+  else bsc.style.color='var(--red)';
+
+  const sig=sc>=72?'hot':sc>=52?'warm':'cold';
+  const sigTxts={hot:'🔥 ALTA PROB',warm:'⚡ MEDIA PROB',cold:'❄ BAJA PROB'};
+  document.getElementById('p-sig').className='sig '+sig;
+  document.getElementById('p-sig').innerHTML=`<div class="sig-dot"></div>${sigTxts[sig]}`;
+
+  // reasons
+  const reasons=[];
+  if(c.tech?.rsi) reasons.push(`RSI ${c.tech.rsi}`);
+  if(c.tech?.macd) {
+    const {macd,hist}=c.tech.macd;
+    if(macd>0&&hist>0) reasons.push('MACD alcista');
+    else if(hist>0) reasons.push('MACD cruce ↑');
+  }
+  if(c.tech?.volFastRatio) reasons.push(`Vol ${c.tech.volFastRatio.toFixed(1)}x reciente`);
+  if(!hasTech) reasons.push('(analizando técnicos...)');
+  document.getElementById('p-reason').textContent=reasons.length?reasons.join(' · '):'Score más alto del top 20';
+
+  // metric bars
+  if(c.tech?.rsi) {
+    document.getElementById('m-rsi').textContent=c.tech.rsi;
+    document.getElementById('mb-rsi').style.width=(c.tech.rsi)+'%';
+  } else {
+    document.getElementById('m-rsi').textContent='estimado';
+  }
+  if(c.tech?.macd) {
+    const {macd,hist}=c.tech.macd;
+    const macdTxt=hist>0?'▲ BULLISH':'▼ BEARISH';
+    document.getElementById('m-macd').textContent=macdTxt;
+    document.getElementById('mb-macd').style.width=(hist>0?'75':'30')+'%';
+  } else {
+    document.getElementById('m-macd').textContent='cargando...';
+  }
+  if(c.tech?.volFastRatio) {
+    document.getElementById('m-vol7').textContent=c.tech.volFastRatio.toFixed(1)+'x';
+    document.getElementById('mb-vol7').style.width=Math.min(100,(c.tech.volFastRatio/8)*100)+'%';
+  }
+  if(c.tech?.ema8&&c.tech?.ema21) {
+    const gap=((c.tech.ema8-c.tech.ema21)/c.tech.ema21*100).toFixed(2);
+    document.getElementById('m-ema').textContent=(gap>0?'+':'')+gap+'%';
+    document.getElementById('mb-ema').style.width=Math.min(100,Math.abs(gap)*10+30)+'%';
+  }
+
+  // Confidence Score + Late Entry Risk (independientes del score principal)
+  const confEl=document.getElementById('p-confidence');
+  const riskEl=document.getElementById('p-risk');
+  if(c.confidence) {
+    const cv=c.confidence.total;
+    confEl.textContent=`Confianza: ${cv}/100`;
+    confEl.style.color = cv>=70?'var(--green)':cv>=45?'var(--amber)':'var(--red)';
+  } else { confEl.textContent='Confianza: —'; }
+  if(c.lateEntryRisk) {
+    const lv=c.lateEntryRisk.level;
+    riskEl.textContent=`Riesgo entrada tarde: ${lv}`;
+    riskEl.style.color = lv==='Bajo'?'var(--green)':lv==='Medio'?'var(--amber)':'var(--red)';
+  } else { riskEl.textContent='Riesgo entrada tarde: —'; }
+}
+
+// ── CANDIDATOS CALIFICADOS ──
+// Muestra solo los que pasan un mínimo de score (65, respaldado por el historial real: por debajo
+// de ahí el promedio de resultado cae a terreno negativo) y limita a máximo 5 para no saturar
+// con señales de baja calidad.
+const QUALIFIED_MIN_SCORE = 65;
+const QUALIFIED_MAX = 5;
+function renderQualified(coins) {
+  const el = document.getElementById('qualified-rows');
+  if (!el) return;
+  const qualified = [...coins]
+    .filter(c => (c.score||0) >= QUALIFIED_MIN_SCORE)
+    .sort((a,b) => b.score - a.score)
+    .slice(0, QUALIFIED_MAX);
+
+  if (!qualified.length) {
+    el.innerHTML = `<div style="font-family:var(--mono);font-size:9px;color:var(--text3);padding:14px 0;text-align:center;letter-spacing:.08em">Ningún candidato con score ≥ ${QUALIFIED_MIN_SCORE} ahora mismo. Es normal — no siempre hay una oportunidad de calidad.</div>`;
+    return;
+  }
+  const favorable = isFavorableTiming();
+  el.innerHTML = qualified.map(c => {
+    const confV = c.confidence?.total ?? '—';
+    const riskV = c.lateEntryRisk?.level ?? '—';
+    const riskCls = riskV==='Bajo'?'rsi-ok':riskV==='Medio'?'rsi-warn':'rsi-over';
+    const goldStyle = favorable ? 'border-color:var(--gold);box-shadow:0 0 8px rgba(255,215,0,.25);background:var(--gold-dim)' : '';
+    return `<div class="coin-tech-row" style="${goldStyle}">
+      <span class="ctr-sym" style="min-width:56px">${c.symbol}</span>
+      <span class="tag" style="color:var(--green)">Score ${c.score}</span>
+      <span class="tag">Conf ${confV}</span>
+      <span class="tag ${riskCls}">Riesgo ${riskV}</span>
+      ${favorable ? '<span class="tag" style="color:var(--gold)">⭐ horario favorable</span>' : ''}
+      <span class="sim-btn" onclick="simulateEntry('${c.symbol}',${c.lastPrice},${c.score})" style="margin-left:auto">▶ SIMULAR</span>
+    </div>`;
+  }).join('');
+}
+
+// ── RENDER TECH ROWS (hero panel) ──
+function renderTechRows(coins, loading) {
+  const el=document.getElementById('tech-rows');
+  el.innerHTML=coins.map((c,i)=>{
+    const t=c.tech;
+    const rsiTxt=t?.rsi!=null?t.rsi.toFixed(1):'···';
+    const rsiCls=!t?.rsi?'loading':t.rsi<=65?'rsi-ok':t.rsi<=72?'rsi-warn':'rsi-over';
+    let macdTxt='···',macdCls='loading';
+    if(t?.macd){const {macd,hist}=t.macd;macdTxt=hist>0?'↑ BULL':'↓ BEAR';macdCls=hist>0?'macd-bull':'macd-bear';}
+    const vol7Txt=t?.volFastRatio!=null?t.volFastRatio.toFixed(1)+'x':'···';
+    const vol7Cls=!t?.volFastRatio?'vol-norm':t.volFastRatio>=2?'vol-high':'vol-norm';
+    let emaTxt='···',emaCls='ema-bull';
+    if(t?.ema8&&t?.ema21){const g=(t.ema8-t.ema21)/t.ema21*100;emaTxt=(g>0?'+':'')+g.toFixed(1)+'%';emaCls=g>0?'ema-bull':'ema-bear';}
+    const bbTxt=t?.volFastRatio>=2?'BB SQ':'—';
+
+    return `<div class="coin-tech-row">
+      <span class="ctr-rank">${i+1}</span>
+      <span class="ctr-sym">${c.symbol}</span>
+      <div class="ctr-metrics">
+        <span class="tag ${rsiCls}">RSI ${rsiTxt}</span>
+        <span class="tag ${macdCls}">${macdTxt}</span>
+        <span class="tag ${vol7Cls}">V ${vol7Txt}</span>
+        <span class="tag ${emaCls}">EMA ${emaTxt}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── RENDER TABLE ──
+let currentSort='score';
+let currentSortDir=-1;
+function sortBy(col) {
+  if(currentSort===col) currentSortDir*=-1; else currentSortDir=-1;
+  currentSort=col;
+  renderTable(allCoins);
+}
+
+function renderTable(coins) {
+  // Sort
+  const sorted=[...coins].sort((a,b)=>{
+    const dir=currentSortDir;
+    switch(currentSort){
+      case 'rank': return (a.rank-b.rank)*dir;
+      case 'price': return (a.lastPrice-b.lastPrice)*dir;
+      case 'pct': return (a.priceChangePct-b.priceChangePct)*dir;
+      case 'vol7': return ((a.tech?.volFastRatio||0)-(b.tech?.volFastRatio||0))*dir;
+      case 'rsi': return ((a.tech?.rsi||estimateRSI(a.priceChangePct))-(b.tech?.rsi||estimateRSI(b.priceChangePct)))*dir;
+      case 'macd': return (((a.tech?.macd?.hist)||0)-((b.tech?.macd?.hist)||0))*dir;
+      case 'accel': return (a.acceleration-b.acceleration)*dir;
+      case 'score': return (a.score-b.score)*dir;
+      default: return 0;
+    }
+  });
+
+  const predSym=([...coins].sort((a,b)=>b.score-a.score)[0]||{}).symbol;
+
+  const tbody=document.getElementById('tbl-body');
+  tbody.innerHTML=sorted.map(c=>{
+    const isPred=c.symbol===predSym;
+    const t=c.tech;
+
+    // RSI
+    const rsiVal=t?.rsi!=null?t.rsi.toFixed(1):null;
+    const rsiCls=!rsiVal?'loading':parseFloat(rsiVal)<=65?'ok':parseFloat(rsiVal)<=72?'warn':'over';
+    const rsiDisp=rsiVal?rsiVal:'~'+estimateRSI(c.priceChangePct).toFixed(0);
+
+    // MACD
+    let macdDisp='···',macdCls='loading';
+    if(t?.macd){const{hist}=t.macd;macdDisp=hist>0?'▲ BULL':'▼ BEAR';macdCls=hist>0?'bull':'bear';}
+
+    // Vol7
+    let v7Disp='···',v7Cls='loading';
+    if(t?.volFastRatio!=null){v7Disp=t.volFastRatio.toFixed(1)+'x';v7Cls=t.volFastRatio>=2?'high':'norm';}
+
+    // EMA
+    let emaDisp='···',emaCls='loading';
+    if(t?.ema8&&t?.ema21){const g=((t.ema8-t.ema21)/t.ema21*100);emaDisp=(g>0?'+':'')+g.toFixed(1)+'%';emaCls=g>0?'bull':'bear';}
+
+    // Accel
+    const acCls=c.acceleration>0.4?'pct-up':c.acceleration<-0.3?'pct-down':'';
+    const acTxt=(c.acceleration>0?'▲':'▼')+Math.abs(c.acceleration).toFixed(2);
+
+    // Score color
+    const sColor=c.score>=72?'var(--green)':c.score>=52?'var(--amber)':'var(--text3)';
+
+    return `<tr class="${isPred?'is-pred':''} flash-row">
+      <td>
+        <span class="rank-n">${c.rank}</span>&nbsp;
+        <span class="sym-name">${c.symbol}</span>${isPred?'<span class="pred-tag">PRED</span>':''}
+        <br><span class="sym-pair" style="padding-left:22px">/USDT</span>
+      </td>
+      <td class="price-txt">$${fmtPrice(c.lastPrice)}</td>
+      <td><span class="pct-up">+${c.priceChangePct.toFixed(2)}%</span></td>
+      <td><span class="vol7-chip ${v7Cls}">${v7Disp}</span></td>
+      <td><span class="rsi-chip ${rsiCls}">${rsiDisp}</span></td>
+      <td><span class="macd-chip ${macdCls}">${macdDisp}</span></td>
+      <td><span class="ema-chip ${emaCls}">${emaDisp}</span></td>
+      <td><span class="${acCls}" style="font-family:var(--mono);font-size:10px">${acTxt}</span></td>
+      <td>
+        <div class="score-cell-wrap">
+          <span class="score-n" style="color:${sColor}">${c.score}</span>
+          <div class="score-mini"><div class="score-mini-fill" style="width:${c.score}%;background:${sColor}"></div></div>
+        </div>
+        <div style="font-family:var(--mono);font-size:8px;color:var(--text3);text-align:right">
+          F:${c.scoreFuerza?.total??'—'} C:${c.scoreContinuacion?.total??'—'}${c.scoreContinuacion?.penalizado?' ⚠':''}
+        </div>
+      </td>
+      <td>
+        ${isAlreadySim(c.symbol)
+          ? `<button class="sim-btn simulated" onclick="showTab('sim')">✓ VER</button>`
+          : `<button class="sim-btn" onclick="simulateEntry('${c.symbol}',${c.lastPrice},${c.score})">▶ SIMULAR</button>`
+        }
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ── UTILS ──
+function fmtPrice(p){
+  if(p>=1000) return p.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  if(p>=1) return p.toFixed(4);
+  if(p>=0.01) return p.toFixed(5);
+  return p.toFixed(8);
+}
+function setLive(ok,txt){
+  document.getElementById('live-txt').textContent=txt;
+  document.getElementById('live-dot').style.background=ok?'var(--green)':'var(--amber)';
+}
+function setAnalyzingTag(txt){
+  document.getElementById('analyzing-tag').textContent=txt;
+}
+function setGloadMsg(msg){
+  const el=document.getElementById('gload-msg');
+  if(el) el.textContent=msg;
+}
+function hideGlobalLoading(){
+  const el=document.getElementById('global-loading');
+  if(el){el.style.opacity='0';el.style.transition='opacity .4s';setTimeout(()=>el.remove(),450);}
+}
+
+// ── COUNTDOWN ──
+function startCountdown(){
+  cdVal=30;
+  if(cdTimer) clearInterval(cdTimer);
+  cdTimer=setInterval(()=>{
+    cdVal--;
+    const pct=cdVal/30;
+    const circ=62.83;
+    document.getElementById('cd-prog').style.strokeDashoffset=circ*(1-pct);
+    document.getElementById('cd-num').textContent=cdVal;
+    if(cdVal<=0){ cdVal=30; fetchData(); startCountdown(); }
+  },1000);
+}
+
+function triggerRefresh(){
+  cdVal=30;
+  fetchData();
+  startCountdown();
+}
+
+// Cambia entre modo NORMAL (busca monedas que apenas arrancan, penaliza RSI alto y subidas
+// diarias grandes) y modo MOMENTUM (busca breakouts ya confirmados, tipo MMT: premia RSI alto
+// y subida grande SI el volumen sigue sosteniendo). Al cambiar, re-lanza el escaneo completo
+// porque los scores dependen del modo activo.
+function toggleScanMode(){
+  scanMode = (scanMode === 'normal') ? 'momentum' : 'normal';
+  const btn = document.getElementById('mode-btn');
+  if (scanMode === 'momentum') {
+    btn.textContent = '🔥 MOMENTUM';
+    btn.style.borderColor = 'rgba(255,90,90,.4)';
+    btn.style.color = 'var(--red)';
+    showToast('Modo Momentum/Breakout activado — más riesgo, busca tendencias ya confirmadas', 'amber');
+  } else {
+    btn.textContent = '📈 NORMAL';
+    btn.style.borderColor = 'rgba(255,180,0,.3)';
+    btn.style.color = 'var(--amber)';
+    showToast('Modo Normal activado — busca monedas que apenas arrancan', 'green');
+  }
+  triggerRefresh();
+}
+
+// (INIT movido al final del archivo — todas las funciones/const/let deben quedar ya
+// declaradas antes de arrancar, para evitar errores de "antes de inicialización")
+
+// Poll de operaciones abiertas cada 60s mientras la app esté abierta en el navegador,
+// para que el stop-loss se evalúe aunque el usuario se quede en la pestaña del scanner
+// (antes solo se revisaba al entrar manualmente a la pestaña de simulación).
+// Importante: esto solo corre mientras esta pestaña del navegador siga abierta;
+// no hay forma de aplicar stop-loss con el navegador cerrado sin un backend/cron externo.
+setInterval(() => {
+  const openSims = loadSims().filter(s => s.status === 'open');
+  if (openSims.length) checkAllOpen();
+}, 60000);
+
+// Fix: en móvil, cuando la pestaña pasa a segundo plano (ej. se abre WhatsApp), el navegador
+// pausa o retrasa los setInterval de arriba y no se reanudan con precisión al volver — el
+// scanner y el chequeo de stop-loss se quedaban "dormidos" sin que el usuario lo notara.
+// Al volver a primer plano forzamos un refresh inmediato en vez de esperar al siguiente tick.
+let lastVisibilityRefresh = 0;
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible') return;
+  const now = Date.now();
+  if (now - lastVisibilityRefresh < 10000) return; // evita refrescos duplicados si parpadea rápido
+  lastVisibilityRefresh = now;
+  const openSims = loadSims().filter(s => s.status === 'open');
+  if (openSims.length) checkAllOpen();
+  triggerRefresh();
+});
+
+// ══════════════════════════════════════════════
+// SIMULADOR MODULE — con snapshots 30m/1h/2h
+// ══════════════════════════════════════════════
+
+const SIM_KEY = 'gp_simulations_v2';
+const SNAP_INTERVALS = [15, 30, 45, 60, 90, 120]; // minutos — antes solo 30/60/120; se agregaron
+// 15/45/90 el 7/8/2026 para poder simular estrategias de salida por tiempo con precisión (antes solo
+// se podía comparar contra el máximo/mínimo global de todo el trade, sin saber en qué momento pasó).
+// La tabla visible sigue mostrando solo 30min/1h/2h para no complicar el diseño, pero el CSV exportado
+// ahora incluye los 6 checkpoints.
+const SIM_STOP_LOSS_PCT = -5; // % — cierre automático si el precio cae a este nivel o peor
+// Ajustado de -3 a -5 el 7/8/2026 tras simular distintos niveles sobre 107 operaciones reales:
+// -5% dio la mayor ganancia total porque los stops más ajustados (-1/-2/-3%) cortaban operaciones
+// que luego se recuperaban y se iban lejos (TUT +9%, FIDA +11.7%, SYN +17.4%).
+
+// ══════════════════════════════════════════════
+// PATRÓN DE REBOTE TÉCNICO (velas 3m) — estrategia manual de Jovani, en proceso de automatizar
+// ══════════════════════════════════════════════
+// Sobre monedas con score dentro del rango de abajo: busca la forma pico → caída "limpia"
+// (casi sin velas verdes intercaladas) → 2 velas verdes consecutivas de crecimiento sostenido
+// = confirmación de entrada. Target +2/+2.5%. Stop-loss en el mínimo de la caída (rara vez lo
+// rompe; cuando lo rompe, según lo observado, normalmente sigue cayendo en vez de recuperar).
+// Es un módulo independiente del score — no reemplaza "candidatos calificados", es una lectura
+// distinta de velas sobre las mismas 20 monedas del top. Los números de abajo (rango de score,
+// mínimo de caída, máx. de velas verdes toleradas en la caída) son un primer borrador: ajustar
+// según resultados.
+// Rango de score ampliado el 23/9/2026: el original (57-65) era aproximado según Jovani, y
+// combinado con que solo se evalúan las 20 monedas del top gainers, la intersección "score en
+// rango exacto + patrón de velas" salía muy poco frecuente (cero señales en los primeros días).
+// Se amplía a 52-70 para generar más señales de prueba; volver a acotar cuando haya suficiente
+// historial real para saber en qué sub-rango el patrón funciona mejor.
+const REBOTE_SCORE_MIN = 52;
+const REBOTE_SCORE_MAX = 70;
+const REBOTE_TARGET_MIN_PCT = 2;
+const REBOTE_TARGET_MAX_PCT = 2.5;
+const REBOTE_LOOKBACK = 40;          // velas de 3m hacia atrás a considerar (~2h)
+const REBOTE_MAX_CHECKS_PER_CYCLE = 8; // tope de llamadas extra por refresh — protege del límite de Binance/proxy
+const REBOTE_MAX_GREEN_IN_DROP = 1;  // velas verdes toleradas dentro de la caída para seguir considerándola "limpia"
+const REBOTE_MIN_DROP_PCT = -0.8;    // caída mínima (pico→mínimo) para no confundir ruido lateral con el patrón
+
+async function fetch3mKlines(symbol, limit = REBOTE_LOOKBACK) {
+  try {
+    const klines = await apiFetch(`${BINANCE}/api/v3/klines?symbol=${symbol}USDT&interval=3m&limit=${limit}`, 8000);
+    return klines.map(k => ({
+      openTime: parseInt(k[0]), open: parseFloat(k[1]), high: parseFloat(k[2]),
+      low: parseFloat(k[3]), close: parseFloat(k[4])
+    }));
+  } catch (e) { return null; }
+}
+
+// Analiza velas de 3m buscando pico → caída limpia → 2 velas verdes de confirmación.
+// Devuelve null si no hay patrón, o los datos de la señal (entrada, stop, target).
+function detectRebotePattern(candles) {
+  if (!candles || candles.length < 6) return null;
+  const isGreen = k => k.close > k.open;
+
+  // Las últimas 2 velas deben ser verdes y con cierre creciente — la confirmación de entrada.
+  // Descarta a propósito el caso de una sola vela verde explosiva (se revierte fácil): si la
+  // vela anterior a esa no es verde también, aquí no califica.
+  const n = candles.length;
+  const c1 = candles[n - 2], c2 = candles[n - 1];
+  if (!isGreen(c1) || !isGreen(c2)) return null;
+  if (!(c2.close > c1.close)) return null;
+
+  // Pico = máximo de las velas antes de la confirmación
+  const preDrop = candles.slice(0, n - 2);
+  if (preDrop.length < 3) return null;
+  let peakIdx = 0;
+  for (let i = 1; i < preDrop.length; i++) {
+    if (preDrop[i].high > preDrop[peakIdx].high) peakIdx = i;
+  }
+  const peak = preDrop[peakIdx];
+
+  // Tramo de caída: del pico hasta la vela justo antes de la confirmación
+  const dropSegment = preDrop.slice(peakIdx + 1);
+  if (dropSegment.length < 2) return null; // necesita caída real, no solo el pico solito
+
+  const greenInDrop = dropSegment.filter(isGreen).length;
+  if (greenInDrop > REBOTE_MAX_GREEN_IN_DROP) return null; // caída no fue "limpia"
+
+  const low = Math.min(...dropSegment.map(k => k.low), c1.low);
+  const dropPct = pctChange(peak.high, low);
+  if (dropPct > REBOTE_MIN_DROP_PCT) return null; // caída insignificante / lateral, no el patrón
+
+  const entryPrice = c2.close;
+  const stopPct = pctChange(entryPrice, low);
+  if (stopPct >= 0) return null; // el mínimo de la caída ya quedó por encima del precio actual
+
+  return {
+    entryPrice,
+    peakPrice: peak.high,
+    stopPrice: low,
+    stopPct,
+    targetLow: entryPrice * (1 + REBOTE_TARGET_MIN_PCT / 100),
+    targetHigh: entryPrice * (1 + REBOTE_TARGET_MAX_PCT / 100),
+    dropPct,
+    candlesInDrop: dropSegment.length,
+    greenInDrop
+  };
+}
+
+// Aviso temprano (solo visual, sin sonido ni push): detecta que ya se formó un pico reciente
+// y la caída que le sigue va "limpia" hasta ahorita, pero TODAVÍA no llegan las 2 velas verdes
+// de confirmación. Es la fase de "viendo si cae limpio", antes del punto de entrada real.
+// Se llama solo cuando detectRebotePattern ya dijo que no (evita traslape entre ambos avisos).
+const ARCO_MAX_VELAS_CAIDA = 12; // ~36min — pasado esto ya no se considera "reciente", se descarta
+
+function detectArcoFormandose(candles) {
+  if (!candles || candles.length < 5) return null;
+  const isGreen = k => k.close > k.open;
+  const n = candles.length;
+
+  let peakIdx = 0;
+  for (let i = 1; i < n; i++) {
+    if (candles[i].high > candles[peakIdx].high) peakIdx = i;
+  }
+  const dropSegment = candles.slice(peakIdx + 1);
+  if (dropSegment.length < 2 || dropSegment.length > ARCO_MAX_VELAS_CAIDA) return null;
+
+  const peak = candles[peakIdx];
+  const greenInDrop = dropSegment.filter(isGreen).length;
+  if (greenInDrop > REBOTE_MAX_GREEN_IN_DROP) return null; // ya se ensució, no vale la pena avisar
+
+  const low = Math.min(...dropSegment.map(k => k.low));
+  const dropPct = pctChange(peak.high, low);
+  if (dropPct > REBOTE_MIN_DROP_PCT / 2) return null; // todavía muy chica, sería puro ruido
+
+  return { peakPrice: peak.high, lowSoFar: low, dropPct, candlesInDrop: dropSegment.length };
+}
+
+function renderRebotePatterns(coins) {
+  const el = document.getElementById('rebote-rows');
+  if (!el) return;
+
+  const titleEl = document.getElementById('rebote-title');
+  if (titleEl) titleEl.textContent = `🎯 PATRÓN DE REBOTE TÉCNICO (score ${REBOTE_SCORE_MIN}-${REBOTE_SCORE_MAX}, velas 3m)`;
+
+  const hits = coins.filter(c => c.rebote);
+  const watching = coins.filter(c => !c.rebote && c.arcoFormandose);
+
+  // Avisar solo de las señales NUEVAS respecto al refresh anterior (evita repetir la alerta
+  // cada 30s mientras la misma señal sigue activa en pantalla). El patrón confirmado dispara
+  // sonido + push; el "formándose" es solo visual (toast neutro), sin sonido ni notificación,
+  // para no generar ruido con algo que todavía puede no cuajar.
+  const currentSymbols = new Set(hits.map(c => c.symbol));
+  if (alertsEnabled) {
+    hits.forEach(c => { if (!previousReboteSymbols.has(c.symbol)) notifyRebotePattern(c); });
+  }
+  previousReboteSymbols = currentSymbols;
+
+  const currentWatching = new Set(watching.map(c => c.symbol));
+  watching.forEach(c => {
+    if (!previousWatchingSymbols.has(c.symbol)) {
+      showToast(`👀 ${c.symbol} — arco formándose, viendo si la caída sale limpia`, '');
+    }
+  });
+  previousWatchingSymbols = currentWatching;
+
+  const watchingHtml = watching.length ? `
+    <div style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--border2)">
+      <div style="font-family:var(--mono);font-size:8px;color:var(--text3);letter-spacing:.08em;margin-bottom:6px">👀 FORMÁNDOSE — SIN CONFIRMAR (esperando 2 velas verdes)</div>
+      ${watching.map(c => `<div class="coin-tech-row" style="opacity:.65">
+        <span class="ctr-sym" style="min-width:56px">${c.symbol}</span>
+        <span class="tag">Score ${c.score}</span>
+        <span class="tag" style="color:var(--text3)">Caída ${fmtPct(c.arcoFormandose.dropPct)} en ${c.arcoFormandose.candlesInDrop} velas</span>
+      </div>`).join('')}
+    </div>` : '';
+
+  if (!hits.length) {
+    el.innerHTML = `<div style="font-family:var(--mono);font-size:9px;color:var(--text3);padding:14px 0;text-align:center;letter-spacing:.08em">Sin patrón de rebote confirmado ahora mismo (score ${REBOTE_SCORE_MIN}-${REBOTE_SCORE_MAX} + caída limpia + 2 velas verdes de confirmación).</div>${watchingHtml}`;
+    return;
+  }
+  el.innerHTML = hits.map(c => {
+    const r = c.rebote;
+    return `<div class="coin-tech-row" style="border-color:var(--cyan);background:var(--cyan-dim)">
+      <span class="ctr-sym" style="min-width:56px">${c.symbol}</span>
+      <span class="tag">Score ${c.score}</span>
+      <span class="tag" style="color:var(--cyan)">Entrada ~$${fmtPrice(r.entryPrice)}</span>
+      <span class="tag" style="color:var(--green)">Target +${REBOTE_TARGET_MIN_PCT}/+${REBOTE_TARGET_MAX_PCT}%</span>
+      <span class="tag" style="color:var(--red)">Stop ${fmtPct(r.stopPct)} ($${fmtPrice(r.stopPrice)})</span>
+      <span class="sim-btn" onclick="simulateEntry('${c.symbol}',${c.lastPrice},${c.score},'rebote',${r.stopPct})" style="margin-left:auto">▶ SIMULAR</span>
+    </div>`;
+  }).join('') + watchingHtml;
+}
+
+// ── ALERTAS DEL PATRÓN DE REBOTE (notificación push + sonido) ──
+// Corre sobre el mismo ciclo de escaneo de 30s que ya existía — no depende de nada externo
+// ni de que alguien esté viendo la pantalla. Solo avisa de señales NUEVAS (que no estaban en
+// el refresh anterior) para no repetir la misma alerta mientras la señal sigue activa.
+const ALERTS_KEY = 'gp_alerts_enabled';
+let alertsEnabled = localStorage.getItem(ALERTS_KEY) === 'true';
+let previousReboteSymbols = new Set();
+let previousWatchingSymbols = new Set();
+let audioCtx = null;
+
+function playAlertBeep() {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const now = audioCtx.currentTime;
+    [880, 1175].forEach((freq, i) => {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      const t0 = now + i * 0.16;
+      gain.gain.setValueAtTime(0, t0);
+      gain.gain.linearRampToValueAtTime(0.25, t0 + 0.02);
+      gain.gain.linearRampToValueAtTime(0, t0 + 0.14);
+      osc.connect(gain).connect(audioCtx.destination);
+      osc.start(t0);
+      osc.stop(t0 + 0.15);
+    });
+  } catch (e) { /* audio no disponible en este navegador — la notificación/toast siguen funcionando */ }
+}
+
+function updateAlertBtn() {
+  const btn = document.getElementById('alert-btn');
+  if (!btn) return;
+  const granted = ('Notification' in window) && Notification.permission === 'granted';
+  if (alertsEnabled && granted) {
+    btn.textContent = '🔔 ALERTAS ON';
+    btn.style.borderColor = 'rgba(0,212,255,.5)';
+    btn.style.color = 'var(--cyan)';
+    btn.style.background = 'var(--cyan-dim)';
+  } else {
+    btn.textContent = '🔕 ALERTAS';
+    btn.style.borderColor = 'rgba(255,255,255,.15)';
+    btn.style.color = 'var(--text2)';
+    btn.style.background = '';
+  }
+}
+
+async function toggleAlerts() {
+  if (alertsEnabled) {
+    alertsEnabled = false;
+    localStorage.setItem(ALERTS_KEY, 'false');
+    updateAlertBtn();
+    showToast('Alertas de patrón de rebote desactivadas.', '');
+    return;
+  }
+  if (!('Notification' in window)) {
+    // Algunos navegadores móviles no exponen Notification — dejamos el sonido como respaldo.
+    alertsEnabled = true;
+    localStorage.setItem(ALERTS_KEY, 'true');
+    updateAlertBtn();
+    showToast('Tu navegador no soporta notificaciones push — queda activo el sonido dentro de la app.', 'amber');
+    return;
+  }
+  const perm = await Notification.requestPermission();
+  if (perm === 'granted') {
+    alertsEnabled = true;
+    localStorage.setItem(ALERTS_KEY, 'true');
+    showToast('🔔 Alertas activadas — te avisará en cuanto detecte el patrón de rebote.', 'cyan');
+    playAlertBeep();
+  } else {
+    showToast('Permiso de notificaciones denegado — puedes activarlo luego en los ajustes del navegador.', 'red');
+  }
+  updateAlertBtn();
+}
+
+function notifyRebotePattern(coin) {
+  const r = coin.rebote;
+  playAlertBeep();
+  if (('Notification' in window) && Notification.permission === 'granted') {
+    try {
+      new Notification(`🎯 Patrón de rebote — ${coin.symbol}`, {
+        body: `Entrada ~$${fmtPrice(r.entryPrice)} · Target +${REBOTE_TARGET_MIN_PCT}/${REBOTE_TARGET_MAX_PCT}% · Stop ${fmtPct(r.stopPct)}`,
+        tag: 'rebote-' + coin.symbol // evita apilar varias notificaciones del mismo símbolo
+      });
+    } catch (e) { /* algunos navegadores móviles no permiten "new Notification()" directo — el sonido/toast ya avisaron */ }
+  }
+  showToast(`🎯 REBOTE detectado: ${coin.symbol} @ $${fmtPrice(r.entryPrice)}`, 'cyan');
+}
+
+// ── SEÑAL DORADA ──
+// Filtro de entrada validado con 96 operaciones reales (2/8/2026), usando SOLO variables
+// disponibles al momento de entrar (nada de snapshots posteriores — pct30m/pct1h/pct2h son
+// snapshots capturados DESPUÉS de entrar, así que no sirven como filtro de entrada, aunque
+// correlacionaban fuerte con el resultado; ese análisis se descartó por ser casi tautológico
+// en los cierres por timeout, donde el snapshot de 2h y el cierre ocurren casi al mismo tiempo).
+// Con datos legítimos de entrada: score 62-66 + volumen no débil + volumen no desinflándose
+// dio 52% de acierto ≥1% y +2.29% de media (vs. ~35% y ~0% del resto de operaciones).
+function isSenalDorada(scoreVal, volEstado, volDecreasing) {
+  return scoreVal >= 62 && scoreVal <= 66 && volEstado !== 'debil' && volDecreasing === false;
+}
+
+function loadSims() {
+  try { return JSON.parse(localStorage.getItem(SIM_KEY)) || []; }
+  catch(e) { return []; }
+}
+function saveSims(sims) {
+  localStorage.setItem(SIM_KEY, JSON.stringify(sims));
+}
+
+function isAlreadySim(symbol) {
+  return loadSims().some(s => s.symbol === symbol && s.status === 'open');
+}
+
+function showTab(tab) {
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  document.getElementById('panel-' + tab).classList.add('active');
+  if (tab === 'sim') { checkAllOpen(); renderHistory(); }
+}
+
+function showToast(msg, type='') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + type;
+  setTimeout(() => t.className = 'toast', 2800);
+}
+
+function pctChange(entry, current) {
+  return ((current - entry) / entry * 100);
+}
+function fmtPct(val) {
+  if (val === null || val === undefined) return '—';
+  const n = parseFloat(val);
+  return (n >= 0 ? '+' : '') + n.toFixed(2) + '%';
+}
+
+async function simulateEntry(symbol, price, score, patternType, customStopPct) {
+  const sims = loadSims();
+  if (sims.some(s => s.symbol === symbol && s.status === 'open')) {
+    showToast('Ya tienes una simulación abierta de ' + symbol, 'red');
+    return;
+  }
+  const coinRef = allCoins.find(c => c.symbol === symbol);
+  const t = coinRef ? coinRef.tech : null;
+  // Valores crudos al momento de entrar — se guardan sin transformar (no solo los scores derivados)
+  // para poder recalcular pesos con evidencia estadística más adelante, en vez de reglas fijas,
+  // una vez que haya suficiente historial (idea: sistema de aprendizaje automático, pendiente).
+  const rawIndicators = {
+    rsi: t?.rsi ?? null,
+    macdHist: t?.macd?.hist ?? null,
+    emaGapPct: (t?.ema8!=null && t?.ema21!=null) ? parseFloat(((t.ema8-t.ema21)/t.ema21*100).toFixed(3)) : null,
+    atrPct: (t?.atr!=null && coinRef?.lastPrice) ? parseFloat((t.atr/coinRef.lastPrice*100).toFixed(3)) : null,
+    volFastRatio: t?.volFastRatio ?? null,
+    volDecreasing: t?.volDecreasing ?? null,
+    volAnalysisEstado: t?.volAnalysis?.estado ?? null,
+    priceChangePct24h: coinRef?.priceChangePct ?? null
+  };
+  const senalDorada = isSenalDorada(score, rawIndicators.volAnalysisEstado, rawIndicators.volDecreasing);
+  const entry = {
+    id: Date.now(),
+    symbol,
+    score,
+    scoreFuerza: coinRef ? coinRef.scoreFuerza : null,           // breakdown de Fuerza al momento de entrar
+    scoreContinuacion: coinRef ? coinRef.scoreContinuacion : null, // breakdown de Continuación al momento de entrar
+    confidence: coinRef?.confidence?.total ?? null,
+    lateEntryRisk: coinRef?.lateEntryRisk?.level ?? null,
+    scanMode, // 'normal' | 'momentum' — para poder separar el análisis de resultados por modo
+    senalDorada, // true si cumplía score 62-66 + volumen no débil + no desinflándose AL ENTRAR
+    patternType: patternType || 'score', // 'score' = flujo normal, 'rebote' = patrón técnico de rebote (velas 3m)
+    customStopPct: (customStopPct != null) ? customStopPct : null, // si viene del patrón de rebote, sustituye a SIM_STOP_LOSS_PCT
+    raw: rawIndicators,
+    entryPrice: price,
+    entryTime: new Date().toLocaleString('es-MX'),
+    entryTimestamp: Date.now(),
+    // Snapshots: { 30: {price, maxPct, minPct, ts}, 60: {...}, 120: {...} }
+    snapshots: {},
+    // Global max/min across all time
+    maxPrice: null,
+    minPrice: null,
+    // Minutos transcurridos hasta tocar por primera vez +1% / +1.5% desde la entrada (null = aún no alcanzado)
+    minutosA1pct: null,
+    minutosA1_5pct: null,
+    status: 'open',
+    closeReason: null, // 'stop-loss' | 'timeout' | 'manual'
+    lastSuccessfulUpdate: Date.now(), // para detectar datos viejos si fetchKlineRange empieza a fallar
+    fetchFailCount: 0
+  };
+  sims.unshift(entry);
+  saveSims(sims);
+  renderTable(allCoins);
+  const label = patternType === 'rebote' ? '🎯 REBOTE — ' : (senalDorada ? '🟡 SEÑAL DORADA — ' : '✓ ');
+  showToast(label + 'Entrada guardada: ' + symbol + ' @ $' + fmtPrice(price), patternType === 'rebote' ? 'cyan' : (senalDorada ? 'gold' : 'green'));
+}
+
+// Fetch price + kline max/min for a window starting at entryTimestamp.
+// Bug real reportado: NIL se quedó mostrando el precio congelado en el scanner mientras ya
+// había caído ~10% en Binance, porque cuando esta función fallaba (red/rate-limit/símbolo)
+// el código no actualizaba nada y tampoco avisaba. Ahora reintenta una vez antes de rendirse;
+// checkAllOpen() lleva la cuenta de fallos y muestra "⚠ sin datos frescos" si pasan 150s+
+// sin una actualización exitosa.
+async function fetchKlineRange(symbol, entryTimestamp, _isRetry) {
+  try {
+    const ticker = await apiFetch(`${BINANCE}/api/v3/ticker/price?symbol=${symbol}USDT`, 5000);
+    const currentPrice = parseFloat(ticker.price);
+
+    const minutesSinceEntry = Math.max(2, Math.floor((Date.now() - entryTimestamp) / 60000) + 2);
+    const limit = Math.min(1000, minutesSinceEntry);
+    const klines = await apiFetch(`${BINANCE}/api/v3/klines?symbol=${symbol}USDT&interval=1m&limit=${limit}`, 8000);
+    const relevant = klines.filter(k => parseInt(k[0]) >= entryTimestamp - 60000);
+
+    let maxPrice = currentPrice, minPrice = currentPrice;
+    if (relevant.length > 0) {
+      maxPrice = Math.max(currentPrice, ...relevant.map(k => parseFloat(k[2])));
+      minPrice = Math.min(currentPrice, ...relevant.map(k => parseFloat(k[3])));
+    }
+    return { currentPrice, maxPrice, minPrice, candles: relevant };
+  } catch(e) {
+    if (!_isRetry) return fetchKlineRange(symbol, entryTimestamp, true);
+    return null;
+  }
+}
+
+// Busca en las velas de 1 minuto el momento exacto (primera vela) en que el precio
+// tocó por primera vez el umbral objetivo (ej. +1% o +1.5% desde el precio de entrada).
+// Devuelve minutos transcurridos desde la entrada, o null si todavía no se ha alcanzado.
+function findMinutesToTarget(candles, entryPrice, entryTimestamp, targetPct) {
+  if (!candles || !candles.length) return null;
+  for (const k of candles) {
+    const high = parseFloat(k[2]);
+    const pct = pctChange(entryPrice, high);
+    if (pct >= targetPct) {
+      const openTime = parseInt(k[0]);
+      return Math.max(0, Math.round((openTime - entryTimestamp) / 60000));
+    }
+  }
+  return null;
+}
+
+// Fetch klines only up to a specific minute offset from entry (for snapshots)
+async function fetchKlineAtMinute(symbol, entryTimestamp, minuteOffset) {
+  try {
+    const targetTs = entryTimestamp + minuteOffset * 60000;
+    const limit = Math.min(500, minuteOffset + 2);
+    const klines = await apiFetch(`${BINANCE}/api/v3/klines?symbol=${symbol}USDT&interval=1m&endTime=${targetTs}&limit=${limit}`, 8000);
+    const relevant = klines.filter(k => parseInt(k[0]) >= entryTimestamp - 60000);
+    if (!relevant.length) return null;
+    // Price at snapshot = close of last relevant candle
+    const closePrice = parseFloat(relevant[relevant.length - 1][4]);
+    const maxPrice = Math.max(...relevant.map(k => parseFloat(k[2])));
+    const minPrice = Math.min(...relevant.map(k => parseFloat(k[3])));
+    return { closePrice, maxPrice, minPrice };
+  } catch(e) { return null; }
+}
+
+async function checkAllOpen() {
+  const sims = loadSims();
+  const openSims = sims.filter(s => s.status === 'open');
+  if (!openSims.length) {
+    document.getElementById('sim-status').textContent = 'Sin operaciones abiertas.';
+    renderHistory();
+    return;
+  }
+  document.getElementById('sim-status').textContent = `Actualizando ${openSims.length} operación(es)...`;
+
+  for (const sim of openSims) {
+    const idx = sims.findIndex(s => s.id === sim.id);
+    if (idx === -1) continue;
+    const minsSinceEntry = (Date.now() - sim.entryTimestamp) / 60000;
+
+    // Check which snapshots are due and not yet captured
+    for (const mins of SNAP_INTERVALS) {
+      const snapKey = String(mins);
+      if (sims[idx].snapshots[snapKey]) continue;        // ya capturado
+      if (minsSinceEntry < mins - 0.5) continue;        // aún no es tiempo
+
+      // Fetch data at that minute mark
+      const snap = await fetchKlineAtMinute(sim.symbol, sim.entryTimestamp, mins);
+      if (snap) {
+        sims[idx].snapshots[snapKey] = {
+          price:  snap.closePrice,
+          pct:    pctChange(sim.entryPrice, snap.closePrice),
+          maxPct: pctChange(sim.entryPrice, snap.maxPrice),
+          minPct: pctChange(sim.entryPrice, snap.minPrice),
+          capturedAt: new Date().toLocaleTimeString('es-MX')
+        };
+      }
+    }
+
+    // Always update current price + running max/min
+    const live = await fetchKlineRange(sim.symbol, sim.entryTimestamp);
+    if (live) {
+      sims[idx].currentPrice = live.currentPrice;
+      sims[idx].maxPrice = live.maxPrice;
+      sims[idx].minPrice = live.minPrice;
+      sims[idx].lastSuccessfulUpdate = Date.now();
+      sims[idx].fetchFailCount = 0;
+
+      // Timing a +1% / +1.5%: solo se calcula una vez, la primera vez que se detecta
+      if (sims[idx].minutosA1pct == null) {
+        sims[idx].minutosA1pct = findMinutesToTarget(live.candles, sim.entryPrice, sim.entryTimestamp, 1);
+      }
+      if (sims[idx].minutosA1_5pct == null) {
+        sims[idx].minutosA1_5pct = findMinutesToTarget(live.candles, sim.entryPrice, sim.entryTimestamp, 1.5);
+      }
+
+      // STOP-LOSS: si el precio actual ya cayó al nivel de stop-loss o peor, cerrar YA.
+      // Antes no existía ningún control de riesgo aquí — la operación solo cerraba
+      // por tiempo (2h), sin importar cuánto hubiera caído en el camino.
+      // Si la entrada viene del patrón de rebote técnico, usa su propio stop (el mínimo
+      // de la caída al momento de entrar) en vez del -5% general.
+      const livePct = pctChange(sim.entryPrice, live.currentPrice);
+      const stopThreshold = (sims[idx].customStopPct != null) ? sims[idx].customStopPct : SIM_STOP_LOSS_PCT;
+      if (sims[idx].status === 'open' && livePct <= stopThreshold) {
+        sims[idx].status = 'closed';
+        sims[idx].closeReason = 'stop-loss';
+        sims[idx].closeTime = new Date().toLocaleString('es-MX');
+        continue; // ya cerrada, no evaluar el cierre por tiempo abajo
+      }
+    } else {
+      // Fallo (incluso tras el reintento en fetchKlineRange): contar para poder avisar
+      // en la tabla si pasa demasiado tiempo sin una actualización exitosa.
+      sims[idx].fetchFailCount = (sims[idx].fetchFailCount || 0) + 1;
+    }
+
+    // Auto-close after 2h snapshot is captured (si no se cerró antes por stop-loss)
+    if (sims[idx].snapshots['120'] && minsSinceEntry >= 120) {
+      sims[idx].status = 'closed';
+      sims[idx].closeReason = sims[idx].closeReason || 'timeout';
+      sims[idx].closeTime = new Date().toLocaleString('es-MX');
+    }
+  }
+
+  saveSims(sims);
+  renderHistory();
+  updateSimStats(sims);
+  document.getElementById('sim-status').textContent = `Última actualización: ${new Date().toLocaleTimeString('es-MX')}`;
+}
+
+function closeSimManual(id) {
+  const sims = loadSims();
+  const idx = sims.findIndex(s => s.id === id);
+  if (idx !== -1) { sims[idx].status = 'closed'; sims[idx].closeReason = 'manual'; sims[idx].closeTime = new Date().toLocaleString('es-MX'); }
+  saveSims(sims);
+  renderHistory();
+  updateSimStats(sims);
+  showToast('Operación cerrada manualmente.', 'green');
+}
+
+// Envuelve en comillas cualquier campo que contenga comas (ej. "23/7/2026, 9:53:19 a.m."),
+// que de otra forma partirían la fila del CSV en columnas incorrectas.
+function csvField(val) {
+  if (val === null || val === undefined) return '';
+  const s = String(val);
+  if (s.includes(',') || s.includes('"') || s.includes('\n')) {
+    return '"' + s.replace(/"/g, '""') + '"';
+  }
+  return s;
+}
+
+function exportCSV() {
+  const sims = loadSims();
+  if (!sims.length) { showToast('No hay operaciones para exportar.', 'red'); return; }
+
+  const headers = [
+    'symbol','score','scoreFuerza','scoreContinuacion','confidence','lateEntryRisk','scanMode','senalDorada',
+    'patternType','customStopPct',
+    'status','entryPrice','entryTime',
+    'pct15m','pct30m','pct45m','pct1h','pct90m','pct2h','minutosA1pct','minutosA1_5pct',
+    'maxPriceGlobal','minPriceGlobal','currentPrice','result_pct','closeReason',
+    'rsi','macdHist','emaGapPct','atrPct','volFastRatio','volDecreasing','volAnalysisEstado','priceChangePct24h'
+  ];
+
+  const rows = sims.map(s => {
+    const curPct = (s.currentPrice) ? pctChange(s.entryPrice, s.currentPrice) : '';
+    const maxPct = (s.maxPrice) ? pctChange(s.entryPrice, s.maxPrice) : '';
+    const minPct = (s.minPrice) ? pctChange(s.entryPrice, s.minPrice) : '';
+    const raw = s.raw || {};
+    const dorada = s.senalDorada != null ? s.senalDorada : isSenalDorada(s.score, raw.volAnalysisEstado, raw.volDecreasing);
+    return [
+      s.symbol, s.score, s.scoreFuerza?.total ?? '', s.scoreContinuacion?.total ?? '',
+      s.confidence ?? '', s.lateEntryRisk ?? '', s.scanMode ?? 'normal', dorada,
+      s.patternType ?? 'score', s.customStopPct ?? '',
+      s.status, s.entryPrice, s.entryTime,
+      s.snapshots['15']?.pct ?? '', s.snapshots['30']?.pct ?? '', s.snapshots['45']?.pct ?? '',
+      s.snapshots['60']?.pct ?? '', s.snapshots['90']?.pct ?? '', s.snapshots['120']?.pct ?? '',
+      s.minutosA1pct ?? '', s.minutosA1_5pct ?? '',
+      maxPct, minPct, s.currentPrice ?? '', curPct, s.closeReason ?? '',
+      raw.rsi ?? '', raw.macdHist ?? '', raw.emaGapPct ?? '', raw.atrPct ?? '',
+      raw.volFastRatio ?? '', raw.volDecreasing ?? '', raw.volAnalysisEstado ?? '', raw.priceChangePct24h ?? ''
+    ].map(csvField).join(',');
+  });
+
+  const csv = headers.join(',') + '\n' + rows.join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const dateStr = new Date().toISOString().slice(0,10);
+  a.href = url;
+  a.download = `gainer-predictor-historial-${dateStr}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('✓ CSV exportado', 'green');
+}
+
+function clearHistory() {
+  if (!confirm('¿Borrar todo el historial de simulaciones?')) return;
+  localStorage.removeItem(SIM_KEY);
+  renderHistory();
+  updateSimStats([]);
+  renderTable(allCoins);
+  showToast('Historial borrado.', 'red');
+}
+
+// Render a snapshot cell
+function snapCell(snap, label) {
+  if (!snap) return `<td style="color:var(--text4);font-size:9px" title="${label}">—</td>`;
+  const pct = snap.pct;
+  const color = pct >= 0 ? 'var(--green)' : 'var(--red)';
+  const maxC = snap.maxPct >= 1 ? 'var(--green)' : 'var(--text3)';
+  const minC = snap.minPct <= -1 ? 'var(--red)' : 'var(--text3)';
+  return `<td title="${label}" style="font-size:10px;line-height:1.6">
+    <span style="color:${color};font-weight:600">${fmtPct(pct)}</span><br>
+    <span style="font-size:8px;color:${maxC}">↑${fmtPct(snap.maxPct)}</span>
+    <span style="font-size:8px;color:var(--text4)"> </span>
+    <span style="font-size:8px;color:${minC}">↓${fmtPct(snap.minPct)}</span>
+  </td>`;
+}
+
+function renderHistory() {
+  const sims = loadSims();
+  const tbody = document.getElementById('hist-body');
+  updateSimStats(sims);
+
+  if (!sims.length) {
+    tbody.innerHTML = `<tr><td colspan="10" class="empty-hist">Sin simulaciones todavía.<br>Ve al Scanner y presiona <span style="color:var(--green)">▶ SIMULAR</span> en la moneda que quieras seguir.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = sims.map(s => {
+    const isOpen = s.status === 'open';
+    const minsSince = (Date.now() - s.entryTimestamp) / 60000;
+
+    // Compatibilidad con simulaciones guardadas antes de que existiera el campo senalDorada:
+    // se recalcula desde los datos crudos ya guardados en vez de perder el dato.
+    const dorada = s.senalDorada != null ? s.senalDorada : isSenalDorada(s.score, s.raw?.volAnalysisEstado, s.raw?.volDecreasing);
+    const isRebote = s.patternType === 'rebote';
+    const rowStyle = isRebote ? 'background:var(--cyan-dim);border-left:2px solid var(--cyan)' : (dorada ? 'background:var(--gold-dim);border-left:2px solid var(--gold)' : '');
+    const doradaBadge = dorada ? '<br><span style="font-family:var(--mono);font-size:7px;color:var(--gold);letter-spacing:.05em">🟡 SEÑAL DORADA</span>' : '';
+    const reboteBadge = isRebote ? '<br><span style="font-family:var(--mono);font-size:7px;color:var(--cyan);letter-spacing:.05em">🎯 PATRÓN REBOTE</span>' : '';
+
+    // Alerta de seguimiento: si a la 1h+ va negativa, avisar aunque no haya tocado el stop-loss todavía
+    // (el histórico muestra que las que van negativas a esa altura casi siempre terminan peor).
+    const curPctSoFar = s.currentPrice ? pctChange(s.entryPrice, s.currentPrice) : null;
+    const alertaSeguimiento = (isOpen && minsSince >= 60 && curPctSoFar !== null && curPctSoFar < 0)
+      ? '<br><span style="font-family:var(--mono);font-size:7px;color:var(--red)">⚠ va negativa a 1h+ — revisar cierre manual</span>' : '';
+
+    // Target del patrón de rebote alcanzado — solo informativo, no cierra sola la operación.
+    const targetHitBadge = (isOpen && isRebote && curPctSoFar !== null && curPctSoFar >= REBOTE_TARGET_MIN_PCT)
+      ? '<br><span style="font-family:var(--mono);font-size:7px;color:var(--green)">🎯 target alcanzado — considera cerrar</span>' : '';
+
+    // Datos viejos: si la última actualización exitosa fue hace 150s+ mientras sigue abierta,
+    // avisar en vez de dejar el precio congelado en silencio (bug real reportado con NIL).
+    const sinceUpdateMs = Date.now() - (s.lastSuccessfulUpdate || s.entryTimestamp);
+    const staleWarning = (isOpen && sinceUpdateMs >= 150000)
+      ? '<br><span style="font-family:var(--mono);font-size:7px;color:var(--amber)">⚠ sin datos frescos</span>' : '';
+
+    // Current / final result
+    const curPrice = s.currentPrice || null;
+    const curPct   = curPrice ? pctChange(s.entryPrice, curPrice) : null;
+    const maxPct   = s.maxPrice ? pctChange(s.entryPrice, s.maxPrice) : null;
+    const minPct   = s.minPrice ? pctChange(s.entryPrice, s.minPrice) : null;
+
+    // Badge
+    let resClass = 'open', resTxt = '⏳ EN CURSO';
+    if (!isOpen && curPct !== null) {
+      resClass = curPct >= 0 ? 'win' : 'loss';
+      resTxt   = fmtPct(curPct);
+    } else if (isOpen && curPct !== null) {
+      resTxt = fmtPct(curPct);
+    }
+
+    const scoreColor = s.score >= 72 ? 'var(--green)' : s.score >= 52 ? 'var(--amber)' : 'var(--text3)';
+    const maxColor   = maxPct !== null && maxPct > 0 ? 'var(--green)' : 'var(--text3)';
+    const minColor   = minPct !== null && minPct < 0 ? 'var(--red)'   : 'var(--text3)';
+
+    // Progress indicator for pending snapshots
+    const pendingSnaps = SNAP_INTERVALS.filter(m => !s.snapshots[String(m)] && minsSince < m);
+    const nextSnap = pendingSnaps.length ? `Próximo snapshot: ${pendingSnaps[0]}min` : '';
+
+    return `<tr style="${rowStyle}">
+      <td style="text-align:left">
+        <span style="font-family:var(--mono);font-weight:700;color:var(--text);font-size:12px">${s.symbol}</span>
+        <span style="color:var(--text4)">/USDT</span><br>
+        <span style="font-family:var(--mono);font-size:8px;color:var(--text3)">${s.entryTime}</span>
+        ${doradaBadge}
+        ${reboteBadge}
+      </td>
+      <td style="color:${scoreColor};font-family:var(--mono);font-weight:700">${s.score}<br><span style="font-size:8px;color:var(--text3);font-weight:400">F:${s.scoreFuerza?.total??'—'} C:${s.scoreContinuacion?.total??'—'}</span></td>
+      <td style="font-family:var(--mono);font-size:10px">$${fmtPrice(s.entryPrice)}</td>
+      ${snapCell(s.snapshots['30'],  '30 min')}
+      ${snapCell(s.snapshots['60'],  '1 hora')}
+      ${snapCell(s.snapshots['120'], '2 horas')}
+      <td style="font-size:10px;text-align:center">
+        <span style="color:${maxColor};font-weight:600;font-family:var(--mono)">${maxPct !== null ? fmtPct(maxPct) : '—'}</span><br>
+        <span style="color:${minColor};font-size:9px;font-family:var(--mono)">${minPct !== null ? fmtPct(minPct) : '—'}</span>
+      </td>
+      <td style="font-size:9px;text-align:center;font-family:var(--mono)">
+        <span style="color:${s.minutosA1pct!=null?'var(--green)':'var(--text3)'}">${s.minutosA1pct!=null? s.minutosA1pct+'min' : '—'}</span><br>
+        <span style="color:${s.minutosA1_5pct!=null?'var(--green)':'var(--text3)'};font-size:8px">${s.minutosA1_5pct!=null? s.minutosA1_5pct+'min' : '—'}</span>
+      </td>
+      <td>
+        <span class="res-badge ${resClass}">${resTxt}</span>
+        ${isOpen ? `<br><span style="font-family:var(--mono);font-size:8px;color:var(--cyan)">${nextSnap}</span>` : ''}
+        ${!isOpen && s.closeReason ? `<br><span style="font-family:var(--mono);font-size:8px;color:var(--text3)">${s.closeReason==='stop-loss'?'⛔ stop-loss':s.closeReason==='timeout'?'⏱ 2h':'✓ manual'}</span>` : ''}
+        ${alertaSeguimiento}
+        ${targetHitBadge}
+        ${staleWarning}
+      </td>
+      <td style="font-size:9px">
+        ${isOpen
+          ? `<button class="sim-btn" style="font-size:7px;padding:2px 6px" onclick="closeSimManual(${s.id})">✓ CERRAR</button>`
+          : `<span style="color:var(--text3);font-size:8px">${s.closeTime||'—'}</span>`}
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function updateSimStats(sims) {
+  const closed = sims.filter(s => s.status === 'closed' && s.currentPrice);
+  const wins   = closed.filter(s => s.currentPrice >= s.entryPrice);
+  const losses = closed.filter(s => s.currentPrice < s.entryPrice);
+  const rate   = closed.length > 0 ? ((wins.length / closed.length) * 100).toFixed(0) + '%' : '—';
+
+  document.getElementById('ss-total').textContent  = sims.length;
+  document.getElementById('ss-wins').textContent   = wins.length;
+  document.getElementById('ss-losses').textContent = losses.length;
+  document.getElementById('ss-rate').textContent   = rate;
+  if (rate !== '—') {
+    document.getElementById('ss-rate').style.color = parseFloat(rate) >= 50 ? 'var(--green)' : 'var(--red)';
+  }
+
+  // Estadística aparte para señal dorada — para ir confirmando (o descartando) si el patrón
+  // se sostiene con operaciones nuevas, separado del resto para no mezclar los dos grupos.
+  const closedDorada = closed.filter(s => (s.senalDorada != null ? s.senalDorada : isSenalDorada(s.score, s.raw?.volAnalysisEstado, s.raw?.volDecreasing)));
+  const winsDorada = closedDorada.filter(s => s.currentPrice >= s.entryPrice);
+  const rateDorada = closedDorada.length > 0 ? ((winsDorada.length / closedDorada.length) * 100).toFixed(0) + '%' : '—';
+  document.getElementById('ss-dorada-n').textContent = closedDorada.length;
+  document.getElementById('ss-dorada-rate').textContent = rateDorada;
+}
+
+// ── INIT ──
+// Va hasta el final a propósito: arranca el scanner solo hasta que TODAS las funciones,
+// const y let del archivo ya se declararon. Bug real encontrado el 23/9/2026: updateAlertBtn()
+// se llamaba aquí cuando el bloque de alertas (más abajo en el archivo) todavía no se había
+// ejecutado, y esa referencia a una variable "let" no inicializada tronaba el script completo
+// a la mitad — con eso, ni siquiera las const del patrón de rebote llegaban a declararse, y
+// aparecía "No se pudo conectar con Binance" (el síntoma real era otro, pero tapaba el error
+// de fondo). Poner el INIT hasta el final evita que este tipo de error se repita.
+fetchData();
+startCountdown();
+updateAlertBtn();
+</script>
+</body>
+</html>
