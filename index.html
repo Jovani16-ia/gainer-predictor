@@ -1087,6 +1087,7 @@ async function fetchData() {
     renderTechRows(top20,true);
 
     let reboteChecksThisCycle = 0;
+    let reboteEligibleThisCycle = 0;
     for(let i=0;i<top20.length;i++){
       const coin=top20[i];
       setGloadMsg(`ANALIZANDO ${i+1}/${top20.length}...`);
@@ -1102,16 +1103,29 @@ async function fetchData() {
       // llamadas EXTRA por refresh de 30s encima de las 20 ya existentes — el diseño original
       // estaba calibrado justo para ~20 llamadas de peso mínimo por ciclo, así que duplicarlas
       // se acerca al límite de Binance/del proxy y puede causar "No se pudo conectar con
-      // Binance" en algunos refreshes. Se prioriza a las monedas en el orden que ya trae
-      // top20 (por % de cambio 24h), igual que el resto del scanner.
+      // Binance" en algunos refreshes.
+      //
+      // Rotación agregada el 24/9/2026: con el tope fijo, siempre se revisaban las mismas
+      // primeras N candidatas en el orden de top20 (por % de cambio 24h) — como ese orden
+      // apenas cambia entre refreshes de 30s, las candidatas que quedaban más abajo en la
+      // lista casi nunca llegaban a revisarse, ciclo tras ciclo. Ahora se reparten en
+      // REBOTE_ROTATION_SPAN grupos rotativos: cada ciclo le toca el turno a un grupo distinto,
+      // así que en unos pocos ciclos (REBOTE_ROTATION_SPAN * 30s) se termina cubriendo a todas
+      // las candidatas elegibles en vez de solo a las mismas de siempre. El tope de
+      // REBOTE_MAX_CHECKS_PER_CYCLE se mantiene como límite de seguridad por si un grupo sale
+      // más cargado de lo normal.
       coin.rebote = null;
       coin.arcoFormandose = null;
-      if (coin.score >= REBOTE_SCORE_MIN && coin.score <= REBOTE_SCORE_MAX && reboteChecksThisCycle < REBOTE_MAX_CHECKS_PER_CYCLE) {
-        reboteChecksThisCycle++;
-        const candles3m = await fetch3mKlines(coin.symbol);
-        coin.rebote = detectRebotePattern(candles3m);
-        // Aviso temprano solo si todavía no hay patrón confirmado (evita traslape de avisos).
-        if (!coin.rebote) coin.arcoFormandose = detectArcoFormandose(candles3m);
+      if (coin.score >= REBOTE_SCORE_MIN && coin.score <= REBOTE_SCORE_MAX) {
+        const turnoDeEsteGrupo = (reboteEligibleThisCycle % REBOTE_ROTATION_SPAN) === reboteRotationOffset;
+        reboteEligibleThisCycle++;
+        if (turnoDeEsteGrupo && reboteChecksThisCycle < REBOTE_MAX_CHECKS_PER_CYCLE) {
+          reboteChecksThisCycle++;
+          const candles3m = await fetch3mKlines(coin.symbol);
+          coin.rebote = detectRebotePattern(candles3m);
+          // Aviso temprano solo si todavía no hay patrón confirmado (evita traslape de avisos).
+          if (!coin.rebote) coin.arcoFormandose = detectArcoFormandose(candles3m);
+        }
       }
 
       renderTechRows(top20,false);
@@ -1126,6 +1140,9 @@ async function fetchData() {
     renderPrediction(top20,true);
     renderQualified(top20);
     renderRebotePatterns(top20);
+
+    // Avanza el turno de rotación para el próximo ciclo (ver comentario en el loop de arriba).
+    reboteRotationOffset = (reboteRotationOffset + 1) % REBOTE_ROTATION_SPAN;
 
   } catch(err) {
     hideGlobalLoading();
@@ -1555,6 +1572,23 @@ const REBOTE_MAX_CHECKS_PER_CYCLE = 8; // tope de llamadas extra por refresh —
 const REBOTE_MAX_GREEN_IN_DROP = 1;  // velas verdes toleradas dentro de la caída para seguir considerándola "limpia"
 const REBOTE_MIN_DROP_PCT = -0.8;    // caída mínima (pico→mínimo) para no confundir ruido lateral con el patrón
 
+// Rotación agregada el 24/9/2026 (ver comentario detallado junto al loop en fetchData): en vez
+// de revisar siempre las mismas primeras candidatas de cada ciclo, se reparten en grupos y cada
+// ciclo le toca el turno a uno distinto, para terminar cubriendo a todas en unos pocos ciclos.
+const REBOTE_ROTATION_SPAN = 3;      // grupos rotativos — con 30s por ciclo, cubre todo el universo elegible cada ~90s
+let reboteRotationOffset = 0;        // grupo activo este ciclo; avanza al final de cada fetchData()
+
+// ── ENTRADA RÁPIDA (+1% en los primeros minutos) ──
+// Agregado el 24/9/2026 tras backtest con datos reales de Binance sobre las 607 simulaciones
+// de Jovani (corrigiendo antes un bug de zona horaria en cómo se leía entryTime): las entradas
+// que ya venían mostrando +1% dentro de los primeros 10 minutos tuvieron 92-93% de efectividad
+// usando +1.5%/-5% como meta/stop (230 casos), muy por encima del resto de las entradas. Es
+// puramente informativo — no cambia cómo se cierran las simulaciones (timeout/stop-loss/manual
+// siguen igual); solo marca la operación y avisa, igual que el patrón de rebote.
+const FAST_MOVER_MAX_MINUTES = 10;        // ventana desde la entrada para considerar "rápida"
+const FAST_MOVER_SUGGESTED_TARGET_PCT = 1.5;
+const FAST_MOVER_SUGGESTED_STOP_PCT = -5;
+
 async function fetch3mKlines(symbol, limit = REBOTE_LOOKBACK) {
   try {
     const klines = await apiFetch(`${BINANCE}/api/v3/klines?symbol=${symbol}USDT&interval=3m&limit=${limit}`, 8000);
@@ -1789,6 +1823,19 @@ function notifyRebotePattern(coin) {
   showToast(`🎯 REBOTE detectado: ${coin.symbol} @ $${fmtPrice(r.entryPrice)}`, 'cyan');
 }
 
+function notifyFastMover(sim) {
+  playAlertBeep();
+  if (('Notification' in window) && Notification.permission === 'granted') {
+    try {
+      new Notification(`🚀 Entrada rápida — ${sim.symbol}`, {
+        body: `Llegó a +1% en ${sim.minutosA1pct}min · Sugerido: +${FAST_MOVER_SUGGESTED_TARGET_PCT}% / ${FAST_MOVER_SUGGESTED_STOP_PCT}%`,
+        tag: 'fastmover-' + sim.symbol
+      });
+    } catch (e) { /* algunos navegadores móviles no permiten "new Notification()" directo — el sonido/toast ya avisaron */ }
+  }
+  showToast(`🚀 ${sim.symbol} llegó a +1% en ${sim.minutosA1pct}min — sugerido +${FAST_MOVER_SUGGESTED_TARGET_PCT}%/${FAST_MOVER_SUGGESTED_STOP_PCT}%`, 'cyan');
+}
+
 // ── SEÑAL DORADA ──
 // Filtro de entrada validado con 96 operaciones reales (2/8/2026), usando SOLO variables
 // disponibles al momento de entrar (nada de snapshots posteriores — pct30m/pct1h/pct2h son
@@ -2001,6 +2048,14 @@ async function checkAllOpen() {
       // Timing a +1% / +1.5%: solo se calcula una vez, la primera vez que se detecta
       if (sims[idx].minutosA1pct == null) {
         sims[idx].minutosA1pct = findMinutesToTarget(live.candles, sim.entryPrice, sim.entryTimestamp, 1);
+        // "Entrada rápida": si el +1% llegó dentro de FAST_MOVER_MAX_MINUTES, marcar y avisar
+        // (ver comentario junto a las constantes FAST_MOVER_*). Solo dispara una vez, justo en
+        // el momento en que minutosA1pct pasa de null a un valor — igual que la alerta de rebote,
+        // no repite el aviso en refreshes siguientes.
+        if (sims[idx].minutosA1pct != null && sims[idx].minutosA1pct <= FAST_MOVER_MAX_MINUTES) {
+          sims[idx].entradaRapida = true;
+          if (alertsEnabled) notifyFastMover(sims[idx]);
+        }
       }
       if (sims[idx].minutosA1_5pct == null) {
         sims[idx].minutosA1_5pct = findMinutesToTarget(live.candles, sim.entryPrice, sim.entryTimestamp, 1.5);
@@ -2068,7 +2123,7 @@ function exportCSV() {
     'symbol','score','scoreFuerza','scoreContinuacion','confidence','lateEntryRisk','scanMode','senalDorada',
     'patternType','customStopPct',
     'status','entryPrice','entryTime',
-    'pct15m','pct30m','pct45m','pct1h','pct90m','pct2h','minutosA1pct','minutosA1_5pct',
+    'pct15m','pct30m','pct45m','pct1h','pct90m','pct2h','minutosA1pct','minutosA1_5pct','entradaRapida',
     'maxPriceGlobal','minPriceGlobal','currentPrice','result_pct','closeReason',
     'rsi','macdHist','emaGapPct','atrPct','volFastRatio','volDecreasing','volAnalysisEstado','priceChangePct24h'
   ];
@@ -2086,7 +2141,7 @@ function exportCSV() {
       s.status, s.entryPrice, s.entryTime,
       s.snapshots['15']?.pct ?? '', s.snapshots['30']?.pct ?? '', s.snapshots['45']?.pct ?? '',
       s.snapshots['60']?.pct ?? '', s.snapshots['90']?.pct ?? '', s.snapshots['120']?.pct ?? '',
-      s.minutosA1pct ?? '', s.minutosA1_5pct ?? '',
+      s.minutosA1pct ?? '', s.minutosA1_5pct ?? '', s.entradaRapida ?? false,
       maxPct, minPct, s.currentPrice ?? '', curPct, s.closeReason ?? '',
       raw.rsi ?? '', raw.macdHist ?? '', raw.emaGapPct ?? '', raw.atrPct ?? '',
       raw.volFastRatio ?? '', raw.volDecreasing ?? '', raw.volAnalysisEstado ?? '', raw.priceChangePct24h ?? ''
@@ -2152,6 +2207,11 @@ function renderHistory() {
     const rowStyle = isRebote ? 'background:var(--cyan-dim);border-left:2px solid var(--cyan)' : (dorada ? 'background:var(--gold-dim);border-left:2px solid var(--gold)' : '');
     const doradaBadge = dorada ? '<br><span style="font-family:var(--mono);font-size:7px;color:var(--gold);letter-spacing:.05em">🟡 SEÑAL DORADA</span>' : '';
     const reboteBadge = isRebote ? '<br><span style="font-family:var(--mono);font-size:7px;color:var(--cyan);letter-spacing:.05em">🎯 PATRÓN REBOTE</span>' : '';
+    // Entrada rápida: +1% dentro de los primeros FAST_MOVER_MAX_MINUTES min (ver notifyFastMover).
+    // Solo informativo — sugiere meta/stop, no los aplica automáticamente al cierre de la simulación.
+    const fastMoverBadge = s.entradaRapida
+      ? `<br><span style="font-family:var(--mono);font-size:7px;color:var(--green);letter-spacing:.05em">🚀 ENTRADA RÁPIDA (+1% en ${s.minutosA1pct}min) — sugerido +${FAST_MOVER_SUGGESTED_TARGET_PCT}%/${FAST_MOVER_SUGGESTED_STOP_PCT}%</span>`
+      : '';
 
     // Alerta de seguimiento: si a la 1h+ va negativa, avisar aunque no haya tocado el stop-loss todavía
     // (el histórico muestra que las que van negativas a esa altura casi siempre terminan peor).
@@ -2199,6 +2259,7 @@ function renderHistory() {
         <span style="font-family:var(--mono);font-size:8px;color:var(--text3)">${s.entryTime}</span>
         ${doradaBadge}
         ${reboteBadge}
+        ${fastMoverBadge}
       </td>
       <td style="color:${scoreColor};font-family:var(--mono);font-weight:700">${s.score}<br><span style="font-size:8px;color:var(--text3);font-weight:400">F:${s.scoreFuerza?.total??'—'} C:${s.scoreContinuacion?.total??'—'}</span></td>
       <td style="font-family:var(--mono);font-size:10px">$${fmtPrice(s.entryPrice)}</td>
